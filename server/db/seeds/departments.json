@@ -1,0 +1,6 @@
+[
+  {"name": "Road Maintenance", "categories": ["roadwork"]},
+  {"name": "Street Furniture & Public Space", "categories": ["street_furniture"]},
+  {"name": "Street Lighting", "categories": ["street_lighting"]},
+  {"name": "Parks & Green Spaces", "categories": ["parks"]}
+]

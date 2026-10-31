@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "_note": "Illustrative response times. Replace with your municipality's real service levels.",
+  "policies": [
+    {"name": "default", "response_days": 7, "is_default": true},
+    {"name": "urgent-48h", "severity_pattern": "high", "response_days": 2},
+    {"name": "non-urgent-7d", "severity_pattern": "low", "response_days": 7},
+    {"name": "lighting-5d", "category_pattern": "street_lighting", "response_days": 5}
+  ]
+}

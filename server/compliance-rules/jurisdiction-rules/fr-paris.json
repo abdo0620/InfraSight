@@ -1,0 +1,15 @@
+{
+  "code": "fr-paris",
+  "version": 1,
+  "name": "Ville de Paris",
+  "region": "Île-de-France",
+  "country": "FR",
+  "bbox": [2.224, 48.815, 2.470, 48.902],
+  "utility_alert": {
+    "provider": "fr-guichet-unique",
+    "required_for_categories": ["pothole", "sidewalk_damage"],
+    "response_days": 9,
+    "receipt_valid_months": 3
+  },
+  "_disclaimer": "ILLUSTRATIVE RULE DATA. The bounding box is approximate and the regulatory values come from the project architecture document. Have the municipality's legal team verify every value before real use."
+}

@@ -48,3 +48,25 @@ export default {
 };
 ```
 `root` is the content area. Prefer `root.onclick = ...` for page-level click handling (it is reset on every navigation).
+
+---
+
+# Server (`server/`)
+
+```
+main.py              App factory (uvicorn main:create_app --factory)
+config/              settings.py (env) + feature_flags.py
+db/                  database.py, models/{core,admin,compliance}.py, seeds/, migrations/
+routes/              reports + tickets (tier 1) · admin (tier 2) · compliance (tier 3) · ai · auth
+services/
+  core/              TIER 1: intake, assessment, tickets (state machine)
+  admin/             TIER 2: categorization, sla, queue
+  compliance/        TIER 3: jurisdiction, permits, utilities, sop
+  workflow/          pipeline.py: the orchestrator (the only code that sees all tiers)
+  ai/                model clients (mock until wired)
+  notifications/     audit-event notifications
+adapters/            external systems (sandbox implementations)
+compliance-rules/    versioned rule DATA (SLA, jurisdictions, permit checklists)
+tests/{core,admin,compliance}/   + kill-switch, import-rule and contract tests
+```
+See [modular-compliance-architecture.md](modular-compliance-architecture.md) for the rules and [API.md](API.md) for endpoints.
