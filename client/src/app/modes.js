@@ -8,6 +8,9 @@ import municipalDashboard from '../features/municipal/dashboard/index.js';
 import municipalCases from '../features/municipal/cases/index.js';
 import municipalReports from '../features/municipal/reports/index.js';
 import municipalSettings from '../features/municipal/settings/index.js';
+import citizenNotices from '../features/citizen/notices/index.js';
+import municipalProjects from '../features/municipal/projects/index.js';
+import municipalInspections from '../features/municipal/inspections/index.js';
 // @imports
 
 export const MODES = {
@@ -18,6 +21,7 @@ export const MODES = {
       citizenRequests,
       citizenServices,
       citizenProfile,
+      citizenNotices,
       // @pages:citizen
     ],
   },
@@ -28,6 +32,8 @@ export const MODES = {
       municipalCases,
       municipalReports,
       municipalSettings,
+      municipalProjects,
+      municipalInspections,
       // @pages:municipal
     ],
   },
