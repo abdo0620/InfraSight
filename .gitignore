@@ -1,3 +1,13 @@
 node_modules/
 .DS_Store
 dist/
+
+# server
+server/infrasight.db
+server/storage/uploads/*
+server/storage/generated/*
+!server/storage/uploads/.gitkeep
+!server/storage/generated/.gitkeep
+__pycache__/
+.pytest_cache/
+.venv/
