@@ -70,6 +70,8 @@ tbody tr[onclick]:hover{background:rgba(255,255,255,.03)}
 /* sign-in page: no side menu, centred card over a dark city map */
 body.auth .app{display:block}body.auth aside{display:none}
 body.auth main{position:relative;z-index:2;min-height:100vh;display:grid;place-items:center;padding:16px}
+/* OpenStreetMap credit, required by its licence: small and dim, never hidden */
+#authbg .leaflet-control-attribution,#zonemap .leaflet-control-attribution{background:rgba(0,0,0,.55);color:#71717a;font-size:9px}#authbg .leaflet-control-attribution a,#zonemap .leaflet-control-attribution a{color:#a1a1aa}
 #authbg{position:fixed;inset:0;z-index:0;background:#121214}
 /* ticket's danger zone map: same dark map as the main map, whether or not the Map page was opened first */
 #zonemap.leaflet-container{background:#000}

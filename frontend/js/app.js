@@ -90,8 +90,8 @@ function loginView(msg,reg){$("nav").innerHTML="";$("who").innerHTML="";authBg()
 // sign-in background: dark, non-interactive city map (same filter as the staff map), removed once signed in
 let AUTHMAP=null;
 function authBg(){document.body.classList.add("auth");if(AUTHMAP||!window.L)return;const d=document.createElement("div");d.id="authbg";document.body.prepend(d);const v=document.createElement("div");v.className="authvig";d.after(v);
-AUTHMAP=L.map(d,{center:[48.3904,-4.4861],zoom:15,zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false});
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,subdomains:["a","b","c"]}).addTo(AUTHMAP)}
+AUTHMAP=L.map(d,{center:[48.3904,-4.4861],zoom:15,zoomControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false});
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,subdomains:["a","b","c"],attribution:"&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"}).addTo(AUTHMAP);AUTHMAP.attributionControl.setPrefix(false)}
 function authOff(){document.body.classList.remove("auth");if(AUTHMAP){AUTHMAP.remove();AUTHMAP=null;$("authbg").remove();document.querySelector(".authvig").remove()}}
 async function doAuth(reg){const b=$("lb"),m=$("lm");b.disabled=true;m.textContent="";try{if(reg)await CF.register($("lu").value.trim(),$("ln").value.trim(),$("lp").value,$("ll").value);else await CF.login($("lu").value.trim(),$("lp").value);history.replaceState(null,"",location.pathname);start()}catch(e){m.textContent=e.message;b.disabled=false}}
 // ---- new AI features: duplicates, damage outline (SAM), repair check, detour, hotspots, weekly brief, updates

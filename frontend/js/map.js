@@ -68,8 +68,8 @@ window.renderZoneMap=function(el,z){
   if(zoneMap){zoneMap.stop();zoneMap.remove();zoneMap=null}
   if(typeof L==="undefined"||z.lat==null){el.innerHTML='<p class="mu" style="padding:12px">No map position for this report.</p>';return}
   el.style.height="260px";
-  zoneMap=L.map(el,{zoomControl:false,attributionControl:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false});  // no animation: the tab is redrawn often
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,subdomains:["a","b","c"]}).addTo(zoneMap);
+  zoneMap=L.map(el,{zoomControl:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false});  // no animation: the tab is redrawn often
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,subdomains:["a","b","c"],attribution:"&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors"}).addTo(zoneMap);zoneMap.attributionControl.setPrefix(false);
   zoneMap.setView([z.lat,z.lng],17);
   const layer=window.drawZone(z,z.lat,z.lng).addTo(zoneMap),b=layer.getBounds();
   if(z.detour)b.extend(L.polyline(z.detour,DETOUR).addTo(zoneMap).getBounds());
