@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+anthropic
+pydantic-settings
+pillow
+sqlalchemy
+pyjwt
+openai
+httpx
