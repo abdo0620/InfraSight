@@ -200,17 +200,21 @@ def report(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
 
 @router.post("/tickets/{ref}/damage")
 def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
-    """SAM 3.1 outlines the damage on the photo (if SAM_URL is set), then the AI estimates its real size."""
+    """SAM 3.1 outlines the damage on the photo (Meta Model API, or your own server with SAM_URL), then the AI
+    estimates its real size."""
     t = _get(s, ref)
     img = _photo(t)
     if not img:
         raise HTTPException(409, "This ticket has no photo")
-    objects = vision.outline(img, t.type)
     size, err = None, None
+    try:
+        objects = vision.outline(img, t.type)
+    except HTTPException as e:            # no outline: the AI still locates and measures the damage
+        objects, err = None, e.detail
     try:
         size = ai.estimate_size(img, t.type, objects).model_dump()
     except HTTPException as e:
-        err = e.detail
+        err = " ".join(x for x in (err, e.detail) if x)
     if objects is None and size is None:
         raise HTTPException(503, f"Set SAM_URL or the AI key in backend/.env. {err}")
     _set_data(t, damage={"objects": objects or [], "size": size, "sam": objects is not None})

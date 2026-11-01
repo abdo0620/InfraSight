@@ -7,3 +7,4 @@ sqlalchemy
 pyjwt
 openai
 httpx
+meta-sam-parser   # reads SAM 3.1 answers (Meta Model API)

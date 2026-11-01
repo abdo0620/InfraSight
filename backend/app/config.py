@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     secret_key: str = ""               # signs login tokens and photo links. Empty: random per start (dev only)
     token_hours: int = 12
     ai_calls_per_hour: int = 30        # per user, all AI features together
-    sam_url: str = ""                  # SAM 3.1 server (sam_server/), e.g. http://gpu-box:8100. Empty: no damage outline
+    sam_url: str = ""                  # own SAM 3.1 server (sam_server/), e.g. http://gpu-box:8100. Empty: SAM 3.1 on the
+                                       # Meta Model API (needs META_API_KEY)
     overpass_urls: list[str] = ["https://overpass-api.de/api/interpreter",          # road network for detours,
                                 "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]  # tried in order
     duplicate_radius_m: int = 80       # a new report this close to an open ticket may be merged into it
