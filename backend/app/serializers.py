@@ -32,6 +32,9 @@ def to_front(t: Ticket, viewer: User) -> dict:
          "age": (datetime.utcnow() - t.created).days, "img": img, "own": int(is_own(t, viewer)),
          "cons": d.get("cons"), "zone": d.get("zone"), "rep": d.get("rep"), "ai": d.get("ai") or {},
          "ch": d.get("ch") or {}, "damage": d.get("damage"), "detour": d.get("detour"),
+         "zone_img": file_url((d.get("visual") or {}).get("zone")),
+         "preview_img": file_url((d.get("visual") or {}).get("preview")),
+         "preview_state": "pending" if (d.get("visual") or {}).get("pending") else (d.get("visual") or {}).get("preview_error"),
          "after": after and {**after, "img": file_url(after.get("path")), "path": None},
          "followers": len(d.get("followers") or []), "merged_into": d.get("merged_into"),
          "log": [{"d": a.d, "w": a.w, "e": a.e, "img": file_url(a.image_path) or (img if a.has_img else None)}
@@ -39,7 +42,8 @@ def to_front(t: Ticket, viewer: User) -> dict:
     if viewer.role in STAFF or f["own"]:
         return f
     return {k: f[k] for k in PUBLIC} | {"own": 0, "ai": {}, "ch": {}, "log": [], "rep": None, "img": None,
-                                        "damage": None, "detour": None, "after": None, "followers": 0, "merged_into": None}
+                                        "damage": None, "detour": None, "after": None, "followers": 0, "merged_into": None,
+                                        "zone_img": None, "preview_img": None, "preview_state": None}
 
 
 def stage_name(st: int) -> str:

@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     meta_base_url: str = "https://api.meta.ai/v1"
     model_quick: str = ""              # intake triage. Empty: muse-spark-1.1 (see services/ai.py)
     model_default: str = ""            # full report, stage assist
+    model_image: str = ""              # repair preview (Muse Image). Empty: muse-image-1.0
     database_url: str = "sqlite:///./infrasight.db"   # swap for postgresql+psycopg://... in production
     upload_dir: str = "uploads"
     max_image_mb: int = 8

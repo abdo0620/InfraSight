@@ -1,8 +1,19 @@
 from typing import Literal, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Owner = Literal["commune", "department", "state", "epci", "private", "network"]
 ZONE_COLORS = {1: "#6b7a8a", 2: "#9a8f5c", 3: "#c9952c", 4: "#d97706", 5: "#ef4444"}  # level -> map colour
+
+
+def _box(v):
+    """Damage box [x1, y1, x2, y2] as fractions of the photo; anything unusable becomes None (no red zone)."""
+    if v is None:
+        return None
+    try:
+        x1, y1, x2, y2 = (min(1.0, max(0.0, float(c))) for c in v)
+    except (TypeError, ValueError):
+        return None
+    return [x1, y1, x2, y2] if x2 - x1 > 0.01 and y2 - y1 > 0.01 else None
 
 
 class PotentialEvent(BaseModel):
@@ -42,6 +53,9 @@ class Triage(BaseModel):
     duplicate_of: Optional[str] = None
     consequences: Consequences
     danger_zone: DangerZone
+    damage_box: Optional[list[float]] = None   # where the damage is on the photo, for the red zone
+
+    _check_box = field_validator("damage_box", mode="before")(_box)
 
 
 class Authority(BaseModel):
@@ -94,6 +108,9 @@ class SizeEstimate(BaseModel):
     area_m2: float = 0
     basis: str = ""                       # which visible references the estimate relies on
     confidence: Literal["low", "medium", "high"] = "low"
+    box: Optional[list[float]] = None     # where the damage is on the photo, when SAM did not outline it
+
+    _check_box = field_validator("box", mode="before")(_box)
 
 
 class RepairCheck(BaseModel):

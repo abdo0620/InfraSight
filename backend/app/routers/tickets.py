@@ -13,7 +13,7 @@ from ..db import Audit, Ticket, User, Zone, get_db
 from ..regulations import DECISION_STAGE, OWNERS, STAGES
 from ..schemas import Triage
 from ..serializers import is_own, stage_name, ticket_ctx, to_front
-from ..services import ai, export, geo, images, routing, vision
+from ..services import ai, export, geo, images, routing, vision, visuals
 from ..services.notify import citizens, notify
 
 router = APIRouter(prefix="/api", tags=["tickets"])
@@ -126,9 +126,16 @@ async def create(bg: BackgroundTasks, addr: str = Form(..., min_length=1, max_le
             _log(t, u, f"AI triage: {x.summary} Owner: {OWNERS[t.owner]}"
                        + (f". Possible duplicate of {x.duplicate_of} (not merged: too far or not open)" if dup else "")
                        + f". Danger: {x.consequences.danger_type}", by_ai=True)
+        if img and x and x.damage_box:
+            _log(t, u, "Damage zone marked on the photo", by_ai=True, image_path=visuals.set_zone(t, img, box=x.damage_box))
+        want_preview = bool(img and ai.configured())
+        if want_preview:
+            _set_data(t, visual={**(t.data or {}).get("visual", {}), "pending": True})
         s.add(t)
         s.commit()
     bg.add_task(notify, t.ref, "Your report was received and registered")
+    if want_preview:
+        bg.add_task(visuals.preview_later, t.ref)
     return {"ticket": to_front(t, u), "merged_into": None, "ai_error": ai_error}
 
 
@@ -182,7 +189,8 @@ def file(name: str, exp: int, sig: str):
 def report(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
     """Full AI report (photo included)."""
     t = _get(s, ref)
-    r = ai.full_report(ticket_ctx(t, _open(s)), _photo(t)).model_dump()
+    zone = visuals.read(((t.data or {}).get("visual") or {}).get("zone"))
+    r = ai.full_report(ticket_ctx(t, _open(s)), _photo(t), zone).model_dump()
     r["danger_zone"] = geo.shape_zone(r["danger_zone"], t.lat, t.lng)
     _set_data(t, rep=r)
     _log(t, u, f"Full report generated: severity {r['severity']}, contact {r['authority']['primary'] or 'n/a'}", by_ai=True)
@@ -206,10 +214,25 @@ def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
     if objects is None and size is None:
         raise HTTPException(503, f"Set SAM_URL or the AI key in backend/.env. {err}")
     _set_data(t, damage={"objects": objects or [], "size": size, "sam": objects is not None})
+    zone = visuals.set_zone(t, img, objects, (size or {}).get("box"))
     _log(t, u, "Damage analysed: " + (f"{len(objects)} area(s) outlined by SAM 3.1. " if objects is not None else "")
-         + (f"About {size['width_m']} × {size['length_m']} m ({size['confidence']} confidence)" if size else ""), by_ai=True)
+         + (f"About {size['width_m']} × {size['length_m']} m ({size['confidence']} confidence)" if size else ""),
+         by_ai=True, image_path=zone)
+    try:
+        _log(t, u, "Repair preview drawn (illustration)", by_ai=True, image_path=visuals.make_preview(t))
+    except HTTPException as e:
+        err = " ".join(x for x in (err, f"Repair preview: {e.detail}") if x)
     s.commit()
     return to_front(t, u) | {"ai_error": err}
+
+
+@router.post("/tickets/{ref}/preview")
+def preview(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
+    """New repair preview (Muse Image) from the photo and the current damage zone."""
+    t = _get(s, ref)
+    _log(t, u, "Repair preview drawn again (illustration)", by_ai=True, image_path=visuals.make_preview(t))
+    s.commit()
+    return to_front(t, u)
 
 
 @router.post("/tickets/{ref}/after-photo")
@@ -222,7 +245,8 @@ async def after_photo(ref: str, image: UploadFile = File(...), u: User = Depends
     _log(t, u, "After-repair photo added", image_path=path)
     check, err = None, None
     try:
-        check = (await run_in_threadpool(ai.check_repair, _photo(t), img, _brief(t))).model_dump()
+        zone = visuals.read(((t.data or {}).get("visual") or {}).get("zone"))
+        check = (await run_in_threadpool(ai.check_repair, zone or _photo(t), img, _brief(t), bool(zone))).model_dump()
         _log(t, u, f"Repair check: {check['verdict'].replace('_', ' ')}. {check['explanation']}", by_ai=True)
     except HTTPException as e:
         err = e.detail
@@ -320,7 +344,9 @@ def apply_severity(ref: str, u: User = Depends(staff), s: Session = Depends(get_
 @router.get("/tickets/{ref}/report.html", response_class=HTMLResponse)
 def report_html(ref: str, u: User = Depends(staff), s: Session = Depends(get_db)):
     t = _get(s, ref)
-    return export.report_html(to_front(t, u), t.image_path)   # TODO: PDF export (WeasyPrint)
+    v, after = (t.data or {}).get("visual") or {}, (t.data or {}).get("after") or {}
+    return export.report_html(to_front(t, u), {"photo": t.image_path, "zone": v.get("zone"),
+                                               "preview": v.get("preview"), "after": after.get("path")})   # TODO: PDF (WeasyPrint)
 
 
 @router.put("/zones")

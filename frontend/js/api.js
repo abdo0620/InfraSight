@@ -15,7 +15,7 @@ if(r.status==401&&token&&!path.startsWith("/auth/login")){keep(null);location.re
 const j=(r.headers.get("content-type")||"").includes("json")?await r.json():await r.text();
 if(!r.ok)throw{status:r.status,message:detail(j,r.status)};return j}
 const abs=u=>u&&u[0]=="/"?ORIGIN+u:u;   // photo links are relative to the backend
-const fix=t=>{t.img=abs(t.img);if(t.after)t.after.img=abs(t.after.img);(t.log||[]).forEach(l=>l.img=abs(l.img));return t};
+const fix=t=>{t.img=abs(t.img);t.zone_img=abs(t.zone_img);t.preview_img=abs(t.preview_img);if(t.after)t.after.img=abs(t.after.img);(t.log||[]).forEach(l=>l.img=abs(l.img));return t};
 const auth=async p=>{const j=await p;keep(j.token);return j.user};
 window.CF={get API(){return API},
 signedIn:()=>!!token,
@@ -38,6 +38,8 @@ merge:(ref,into)=>call("POST",`/tickets/${ref}/merge`,{into}).then(fix),
 damage:ref=>call("POST",`/tickets/${ref}/damage`).then(fix),
 afterPhoto:(ref,file)=>{const fd=new FormData();fd.append("image",file);return call("POST",`/tickets/${ref}/after-photo`,fd).then(fix)},
 detour:ref=>call("POST",`/tickets/${ref}/detour`).then(fix),
+preview:ref=>call("POST",`/tickets/${ref}/preview`).then(fix),
+one:ref=>call("GET",`/tickets/${ref}`).then(fix),
 hotspots:()=>call("GET","/hotspots"),
 forecast:()=>call("POST","/hotspots/forecast"),
 brief:()=>call("GET","/brief"),
