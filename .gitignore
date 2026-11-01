@@ -11,3 +11,10 @@ server/storage/generated/*
 __pycache__/
 .pytest_cache/
 .venv/
+
+# backend
+backend/.env
+backend/.venv/
+backend/infrasight.db
+backend/uploads/*
+!backend/uploads/.gitkeep
