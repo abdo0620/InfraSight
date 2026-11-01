@@ -6,26 +6,61 @@ on:
   pull_request:
 
 jobs:
-  client:
+  backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm test
-        working-directory: client
-
-  server:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements-dev.txt
-        working-directory: server
-      # Includes the kill-switch tests (tier 1 works with every flag off and every adapter dead)
-      # and the import-rule test (tier boundaries).
-      - run: pytest -q
-        working-directory: server
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+        working-directory: backend
+      # Starts the app on a throwaway database with the demo users, then calls the main endpoints.
+      # No META_API_KEY: AI calls are not made (they cost money); the app must still start and serve.
+      - name: Smoke test
+        working-directory: backend
+        env:
+          DATABASE_URL: sqlite:///./ci.db
+          UPLOAD_DIR: ci-uploads
+          SECRET_KEY: ci-only-not-a-secret-ci-only-not-a-secret-ci-only-not-a-secret
+          SEED_DEMO: 'true'
+          DEMO_PASSWORD: ci-demo-password
+        run: |
+          python - <<'EOF'
+          from fastapi.testclient import TestClient
+          from app.main import app
+
+          with TestClient(app) as c:
+              assert c.get("/api/health").status_code == 200
+              assert c.get("/api/meta").json()["stages"], "no stages"
+              r = c.post("/api/auth/login", json={"username": "tech", "password": "ci-demo-password"})
+              assert r.status_code == 200, r.text
+              h = {"Authorization": "Bearer " + r.json()["token"]}
+              assert c.get("/api/state", headers=h).json()["tickets"], "no demo tickets"
+              assert c.get("/api/stats", headers=h).status_code == 200
+              assert c.get("/api/state").status_code == 401, "state must need a login"
+              assert c.get("/").status_code == 200, "frontend not served"
+          print("backend smoke test passed")
+          EOF
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript syntax
+        run: for f in frontend/js/*.js; do node --check "$f" && echo "ok $f"; done
+
+  sam-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # Syntax only: the real dependencies (PyTorch, SAM 3.1 weights) are too heavy for CI.
+      - run: python -m py_compile sam_server/server.py

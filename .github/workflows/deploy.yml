@@ -1,14 +1,26 @@
 name: Deploy to GitHub Pages
 
+# Publishes frontend/ (static files). GitHub Pages cannot run the Python backend: set the repository variable
+# INFRASIGHT_API_URL (Settings > Secrets and variables > Actions > Variables) to the address of a hosted backend,
+# e.g. https://infrasight-api.example.com/api, and the published site will use it. Without it, the site expects a
+# backend on the visitor's own computer (start.bat, http://localhost:8000).
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -19,12 +31,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Build site
+        env:
+          API_URL: ${{ vars.INFRASIGHT_API_URL }}
+        run: |
+          cp -r frontend _site
+          if [ -n "$API_URL" ]; then
+            printf 'window.INFRASIGHT_API=%s;\n' "$(jq -Rn --arg u "$API_URL" '$u')" > _site/js/config.js
+            echo "Backend: $API_URL"
+          else
+            echo "No INFRASIGHT_API_URL variable: the site will look for a local backend"
+          fi
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: './client'
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
