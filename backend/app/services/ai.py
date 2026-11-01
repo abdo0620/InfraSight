@@ -1,20 +1,19 @@
 """All prompts live here. The browser never sends a prompt: it calls the ticket endpoints, which call these."""
 import base64, json, logging, re
-import anthropic, openai
+import openai
 from fastapi import HTTPException
 from pydantic import BaseModel, ValidationError
 from ..config import settings
 from ..regulations import DIRECTORY, REG, STAGES
 from ..schemas import Forecast, RepairCheck, Report, SizeEstimate, Triage
 
-# (quick, default) model per provider when MODEL_QUICK / MODEL_DEFAULT are not set in .env
-DEFAULT_MODELS = {"meta": ("muse-spark-1.1", "muse-spark-1.1"), "anthropic": ("claude-haiku-5-5", "claude-sonnet-5-5")}
+# Muse Spark model when MODEL_QUICK / MODEL_DEFAULT are not set in .env
+DEFAULT_MODEL = "muse-spark-1.1"
 _clients: dict = {}
 
 
 def _model(tier: str) -> str:
-    quick, default = DEFAULT_MODELS[settings.ai_provider]
-    return (settings.model_quick or quick) if tier == "quick" else (settings.model_default or default)
+    return (settings.model_quick if tier == "quick" else settings.model_default) or DEFAULT_MODEL
 
 
 def _ask_meta(prompt: str, imgs: list[bytes], model: str) -> str:
@@ -33,22 +32,6 @@ def _ask_meta(prompt: str, imgs: list[bytes], model: str) -> str:
         raise HTTPException(502, "The AI could not answer. Try again.") from e
     return r.choices[0].message.content or ""
 
-
-def _ask_claude(prompt: str, imgs: list[bytes], model: str) -> str:
-    if not settings.anthropic_api_key:
-        raise HTTPException(503, "AI is not configured: set ANTHROPIC_API_KEY in backend/.env")
-    c = _clients.setdefault("anthropic", anthropic.Anthropic(api_key=settings.anthropic_api_key))
-    parts = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
-                                          "data": base64.b64encode(i).decode()}} for i in imgs]
-    parts.append({"type": "text", "text": prompt})
-    try:
-        r = c.messages.create(model=model, max_tokens=2000, messages=[{"role": "user", "content": parts}])
-    except anthropic.RateLimitError:
-        raise HTTPException(429, "The AI is busy. Wait a moment and try again.")
-    except anthropic.APIError as e:
-        logging.exception("Claude call failed")
-        raise HTTPException(502, "The AI could not answer. Try again.") from e
-    return "".join(b.text for b in r.content if b.type == "text")
 
 CONS_JSON = ('"consequences":{"danger_type":"","blocked_access":false,"potential_events":[{"event":"","likelihood":'
              '"low|medium|high","impact":""}],"vulnerable_people":"","immediate_measures":[""]},'
@@ -72,12 +55,11 @@ REPORT_JSON = ('{"type":"","severity":1-5,"severity_reason":"","urgency":"immedi
 def _ask(prompt: str, image: bytes | list[bytes] | None, tier: str) -> str:
     """image: one photo, several (before / after) or none."""
     imgs = [i for i in (image if isinstance(image, list) else [image]) if i]
-    ask = _ask_claude if settings.ai_provider == "anthropic" else _ask_meta
-    return ask(prompt, imgs, _model(tier))
+    return _ask_meta(prompt, imgs, _model(tier))
 
 
 def configured() -> bool:
-    return bool(settings.anthropic_api_key if settings.ai_provider == "anthropic" else settings.meta_api_key)
+    return bool(settings.meta_api_key)
 
 
 def _ask_model(prompt: str, image, tier: str, model: type[BaseModel]) -> BaseModel:

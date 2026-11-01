@@ -15,7 +15,7 @@ backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created
   app/routers/auth.py      POST /api/auth/login, /api/auth/register (citizens), GET /api/auth/me
   app/routers/tickets.py   state, create (with AI triage), report, stage assist, checklist, advance, photo, zones
   app/routers/stats.py     GET /api/stats (staff)
-  app/services/            ai.py (all prompts, Muse Spark / Claude calls), geo.py (OpenStreetMap: pin -> address,
+  app/services/            ai.py (all prompts, Muse Spark calls), geo.py (OpenStreetMap: pin -> address,
                            street shapes), routing.py (detours), vision.py (SAM client), notify.py (citizen
                            updates), images.py, export.py (report HTML with the photo)
   app/routers/insights.py  hotspots + forecast, weekly brief, notifications
@@ -35,9 +35,9 @@ uvicorn app.main:app --reload                                        # site: htt
 ```
 The backend serves the console too. Opening `frontend/index.html` as a file does not work.
 
-## AI provider
-`AI_PROVIDER=meta` uses Muse Spark through the Meta Model API (`https://api.meta.ai/v1`, OpenAI-compatible, key from
-dev.meta.ai). `AI_PROVIDER=anthropic` uses Claude. Model names: `MODEL_QUICK` (triage) and `MODEL_DEFAULT` (report,
+## AI model
+The AI is Muse Spark through the Meta Model API (`https://api.meta.ai/v1`, OpenAI-compatible, key from
+dev.meta.ai). Model names: `MODEL_QUICK` (triage) and `MODEL_DEFAULT` (report,
 stage assist); empty means `muse-spark-1.1`. Without a key, reports are still saved for manual triage.
 
 With `SEED_DEMO=true` and `DEMO_PASSWORD` set, an empty database gets the sample tickets and three users:

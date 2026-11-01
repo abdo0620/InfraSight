@@ -67,3 +67,43 @@ tbody tr[onclick]:hover{background:rgba(255,255,255,.03)}
 .phw{position:relative;margin-bottom:10px}.phw img.ph{max-height:none;object-fit:contain;margin:0}.ovl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.ovl polygon{fill:rgba(239,68,68,.22);stroke:#ef4444;stroke-width:2;vector-effect:non-scaling-stroke}
 .badge{display:inline-block;min-width:18px;padding:0 6px;margin-left:6px;border-radius:999px;background:var(--ac);color:#1c0e08;font-size:11px;font-weight:600;text-align:center}
 .verdict-repaired{color:#4ade80}.verdict-partial,.verdict-unclear{color:#fbbf24}.verdict-not_repaired{color:var(--s5)}
+/* sign-in page: no side menu, centred card over a dark city map */
+body.auth .app{display:block}body.auth aside{display:none}
+body.auth main{position:relative;z-index:2;min-height:100vh;display:grid;place-items:center;padding:16px}
+#authbg{position:fixed;inset:0;z-index:0;background:#121214}
+/* ticket's danger zone map: same dark map as the main map, whether or not the Map page was opened first */
+#zonemap.leaflet-container{background:#000}
+#zonemap .leaflet-tile-pane,#authbg .leaflet-tile-pane{filter:invert(100%) hue-rotate(180deg) grayscale(100%) brightness(1.3) contrast(1.7)}
+.authvig{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,.15) 0%,rgba(0,0,0,.55) 60%,rgba(0,0,0,.9) 100%)}
+.authcard{width:100%;max-width:420px}
+.authname{justify-content:center;font-size:30px;padding:0 0 16px;text-shadow:0 2px 12px #000}
+/* phone menu button (hidden on wide screens) */
+.menubtn{display:none;margin-left:auto;width:36px;height:36px;border:1px solid var(--ln);border-radius:10px;background:var(--p2);cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0}
+.menubtn span{display:block;width:16px;height:1.5px;border-radius:1px;background:var(--tx);transition:transform .2s,opacity .2s}
+aside.open .menubtn span:nth-child(1){transform:translateY(5.5px) rotate(45deg)}aside.open .menubtn span:nth-child(2){opacity:0}aside.open .menubtn span:nth-child(3){transform:translateY(-5.5px) rotate(-45deg)}
+img,svg,video{max-width:100%}
+/* phones: nothing wider than the screen */
+@media(max-width:760px){
+.app{grid-template-columns:minmax(0,1fr);align-content:start}
+aside{position:sticky;top:0;z-index:1500;height:auto;padding:10px 14px;border-right:0;border-bottom:1px solid var(--ln)}
+.brand{padding:0;font-size:19px}
+.menubtn{display:flex}
+aside nav,aside #who{display:none}
+aside.open nav{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:10px;overflow:visible}
+aside.open nav a{margin:0}
+aside.open #who{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:10px 4px 2px!important;padding-top:10px;border-top:1px solid var(--ln)}
+aside.open #who p{margin:0}aside.open #who p.mu{display:none}
+main{padding:14px;min-width:0}
+h1{font-size:24px}
+td,th,p,li{overflow-wrap:anywhere}
+.tabs{flex-wrap:wrap}.tabs button{padding:7px 10px}
+.sw{overflow:visible}
+table.cards,table.cards tbody{display:block}
+table.cards thead{display:none}
+table.cards tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;padding:10px 2px;border-bottom:1px solid var(--ln)}
+table.cards td{display:block;border:0;padding:0;min-width:0;white-space:normal!important}
+table.cards td[data-label=""]{grid-column:1/-1}table.cards td:empty{display:none}
+table.cards td[data-label]:not([data-label=""])::before{content:attr(data-label);display:block;color:var(--mu);font-size:11px;margin-bottom:1px}
+.hb>div{grid-template-columns:90px 1fr 54px}
+body.auth main{min-height:100vh}
+}

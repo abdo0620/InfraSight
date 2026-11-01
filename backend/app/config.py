@@ -2,12 +2,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env")
-    ai_provider: str = "meta"          # meta (Muse Spark, Meta Model API) | anthropic (Claude)
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")   # old .env lines (AI_PROVIDER...) are ignored
     meta_api_key: str = ""             # from dev.meta.ai
     meta_base_url: str = "https://api.meta.ai/v1"
-    anthropic_api_key: str = ""
-    model_quick: str = ""              # intake triage. Empty: provider default (see services/ai.py)
+    model_quick: str = ""              # intake triage. Empty: muse-spark-1.1 (see services/ai.py)
     model_default: str = ""            # full report, stage assist
     database_url: str = "sqlite:///./infrasight.db"   # swap for postgresql+psycopg://... in production
     upload_dir: str = "uploads"
