@@ -20,7 +20,7 @@ frontend/                  static console, no build step
   js/mapview.js            YOUR Leaflet map (index.js) adapted: CityMap.init({role, tickets, zones, onPin, onZone})
   js/map.js                danger zone drawing (point / street / area), mini map in the ticket's Danger tab
   js/api.js                backend client: login token + one function per ticket action (no prompts)
-  js/config.js             backend address (empty = same server; set by the Pages deployment)
+  js/config.js             backend address (empty = the same server as the page)
 backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created on first start)
   app/db.py                tables: users, tickets, audit_log, zones
   app/auth.py              passwords (scrypt), login tokens (JWT), role checks, signed photo links, AI rate limit
@@ -148,10 +148,8 @@ are fetched again at each start. A map pin's default text is replaced by the rea
 ## Deployment
 - **CI** (`.github/workflows/ci.yml`): installs the backend and smoke-tests login, tickets and stats on a temporary
   database; checks the JavaScript syntax. No AI calls, no key needed.
-- **GitHub Pages** (`.github/workflows/deploy.yml`): publishes `frontend/`. Pages cannot run the Python backend: set
-  the repository variable `INFRASIGHT_API_URL` to a hosted backend (e.g. `https://example.com/api`) and allow the
-  Pages address in the backend's `CORS_ORIGINS`. Without it, the published page expects a backend on the visitor's
-  computer.
+- **No hosted copy.** Run it from this repository (see Run). The console and the API are served by the same
+  backend; to host it, run the backend on a server and open its address.
 
 ## To complete
 1. PostgreSQL + PostGIS (`DATABASE_URL`), Alembic migrations. Until then, new columns are added at start
