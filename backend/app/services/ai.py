@@ -317,8 +317,9 @@ def check_repair(before: bytes | None, after: bytes, ticket: dict, marked: bool 
 # 6. Traffic order (arrêté) for a road closure, in French
 # ---------------------------------------------------------------------------------------------------------------
 
-def traffic_order(ticket: dict, street: str, length_m: float, detour: list[str]) -> str:
-    """Draft of the mayor's traffic order (arrêté) closing the street section, with the computed detour."""
+def traffic_order(ticket: dict, street: str, length_m: float, detour: list[str], commune: str = "") -> str:
+    """Draft of the mayor's traffic order (arrêté) closing the street section, with the computed detour.
+    What only the town hall knows (order number, dates and hours, signing date) stays "[à compléter]"."""
     system = _system(
         "Role: you are the legal drafting assistant of a French town hall. You draft a temporary traffic order "
         "(arrêté municipal portant réglementation temporaire de la circulation) for the mayor to review and sign.",
@@ -327,7 +328,7 @@ def traffic_order(ticket: dict, street: str, length_m: float, detour: list[str])
         "Structure, in this order:\n"
         "1. Title: ARRÊTÉ MUNICIPAL N° [à compléter] portant réglementation temporaire de la circulation, with the "
         "street name.\n"
-        "2. Le Maire de [commune à compléter],\n"
+        "2. Le Maire de <commune>, using the commune given in the data, or [commune à compléter] if none,\n"
         "3. Visas, one per line starting with \"Vu\": Code général des collectivités territoriales, notamment les "
         "articles L2213-1 et L2213-2; Code de la route; instruction interministérielle sur la signalisation routière.\n"
         "4. Considérant: the works and the danger, from the ticket only.\n"
@@ -335,12 +336,12 @@ def traffic_order(ticket: dict, street: str, length_m: float, detour: list[str])
         "Article 3 detour route, streets in the given order; Article 4 signage, at the charge of the contractor or the "
         "commune; Article 5 exemptions for emergency, security and residents' vehicles; Article 6 posting and "
         "publication; Article 7 execution (who is charged with enforcing the order).\n"
-        "6. Fait à [à compléter], le [à compléter], signature line for the Maire.",
+        "6. Fait à <commune> (or [à compléter]), le [à compléter], signature line for the Maire.",
         "Rules: cite only the legal texts listed in the visas. Write \"[à compléter]\" for every value not given "
         "(dates, hours, names, numbers) and \"[à vérifier]\" after any point the mayor's office must check. If the "
         "detour is \"not computed\", write Article 3 with \"[itinéraire à compléter]\".",
         TEXT_RULES)
-    user = _data(ticket=ticket, section_closed=f"{street}, about {round(length_m)} m",
+    user = _data(ticket=ticket, commune=commune or "not given", section_closed=f"{street}, about {round(length_m)} m",
                  detour_streets_in_order=", ".join(detour) or "not computed")
     return _ask(system, user, None, "default")
 

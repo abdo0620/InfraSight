@@ -285,7 +285,8 @@ def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
         raise HTTPException(502, str(e))
     order, err = None, None
     try:
-        order = ai.traffic_order(_brief(t), street.get("name") or t.addr, z.get("radius_m") or 0, d["streets"])
+        order = ai.traffic_order(_brief(t), street.get("name") or t.addr, z.get("radius_m") or 0, d["streets"],
+                                 settings.commune_name)
     except HTTPException as e:
         err = e.detail
     _set_data(t, detour={**d, "order": order})
@@ -293,6 +294,18 @@ def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
                + (". Traffic order drafted" if order else ""), by_ai=bool(order))
     s.commit()
     return to_front(t, u) | {"ai_error": err}
+
+
+@router.delete("/tickets/{ref}/detour")
+def remove_detour(ref: str, u: User = Depends(staff), s: Session = Depends(get_db)):
+    """Remove the detour and its draft traffic order (the street zone stays; a new detour can be planned)."""
+    t = _get(s, ref)
+    if not (t.data or {}).get("detour"):
+        raise HTTPException(404, "This ticket has no detour")
+    _set_data(t, detour=None)
+    _log(t, u, "Detour and draft traffic order removed")
+    s.commit()
+    return to_front(t, u)
 
 
 @router.post("/tickets/{ref}/stages/{stage}/assist")

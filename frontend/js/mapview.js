@@ -104,7 +104,7 @@ function initMunicipalMap(opts) {
     document.querySelector('.severity-picker').remove();
     clearBtn.remove();
   } else {
-    document.querySelector('.toolbar-group').insertAdjacentHTML('beforeend', '<button class="tool-btn active" id="ai-zones">AI zones</button><button class="tool-btn" id="finish-zone">Finish zone</button>');
+    document.querySelector('.toolbar-group').insertAdjacentHTML('beforeend', '<button class="tool-btn active" id="ai-zones">AI zones</button><button class="tool-btn active" id="detours">Detours</button><button class="tool-btn" id="finish-zone">Finish zone</button>');
   }
 
   dotBtn.addEventListener('click', () => {
@@ -175,6 +175,7 @@ function initMunicipalMap(opts) {
 
   const ZC = ['#000', '#6b7a8a', '#9a8f5c', '#c9952c', '#d97706', '#ef4444'];
   const aiLayer = L.layerGroup();
+  const detourLayer = L.layerGroup();   // its own toggle: hide detours without hiding the danger zones
   let pinMarker = null;
   function placePin(lat, lng) {
     if (pinMarker) map.removeLayer(pinMarker);
@@ -207,7 +208,9 @@ function initMunicipalMap(opts) {
     (opts.tickets || []).forEach(t => {
       if (!t.zone) return;
       window.drawZone(t.zone, t.lat, t.lng).bindTooltip(t.tip, { sticky: true }).addTo(aiLayer);
-      if (t.detour) L.polyline(t.detour, window.DETOUR_STYLE).bindTooltip(t.detourTip, { sticky: true }).addTo(aiLayer);
+      if (t.detour) L.polyline(t.detour, window.DETOUR_STYLE).bindTooltip(t.detourTip, { sticky: true })
+        .bindPopup(`<div class="pop"><b>Detour of ${t.ref}</b><br>${t.detourTip}<br><button class="btn alt" style="margin-top:8px" onclick="removeDetour(${t.id})">Remove this detour</button></div>`)
+        .addTo(detourLayer);
     });
     // streets with repeated problems (Hotspots page): purple dashed rings, bigger with more reports
     (opts.hotspots || []).forEach(h => {
@@ -216,6 +219,12 @@ function initMunicipalMap(opts) {
         .bindTooltip(h.tip, { sticky: true }).addTo(aiLayer);
     });
     aiLayer.addTo(map);
+    detourLayer.addTo(map);
+    document.getElementById('detours').onclick = e => {
+      const on = map.hasLayer(detourLayer);
+      if (on) map.removeLayer(detourLayer); else map.addLayer(detourLayer);
+      e.currentTarget.classList.toggle('active', !on);
+    };
     (opts.zones || []).forEach(z => addZonePolygon(z.points, z.level, z.id));
     document.getElementById('ai-zones').onclick = e => {
       const on = map.hasLayer(aiLayer);
