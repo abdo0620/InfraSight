@@ -45,6 +45,23 @@ jobs:
           print("backend smoke test passed")
           EOF
 
+  # What a judge on macOS / Linux runs: a fresh checkout, ./start.sh, then sign in with the demo password.
+  start-sh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: ./start.sh serves the console and the demo accounts
+        run: |
+          ./start.sh > start.log 2>&1 &
+          for i in $(seq 1 90); do curl -sf localhost:8000/api/health && break; sleep 2; done
+          curl -sf localhost:8000/ | grep -q InfraSight
+          curl -sf -X POST localhost:8000/api/auth/login -H 'Content-Type: application/json' \
+               -d '{"username":"tech","password":"demo1234"}' | grep -q token
+          echo "start.sh works"; cat start.log
+
   frontend:
     runs-on: ubuntu-latest
     steps:
