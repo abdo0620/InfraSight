@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="96" height="96" fill="none" role="img" aria-label="InfraSight logo: a radar over the street grid">
+  <circle cx="32" cy="32" r="27" stroke="#d97757" stroke-width="3"/>
+  <path d="M8 36H56M30 6 34 58" stroke="#d97757" stroke-width="2" stroke-opacity=".35"/>
+  <path d="M32 32V5A27 27 0 0 1 55.4 18.5Z" fill="#d97757" fill-opacity=".45"/>
+  <circle cx="32" cy="32" r="3.5" fill="#d97757"/>
+</svg>

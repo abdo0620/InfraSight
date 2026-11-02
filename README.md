@@ -1,160 +1,290 @@
-# InfraSight
+<p align="center">
+  <img src="docs/images/logo.svg" width="88" alt="InfraSight logo: a radar over the street grid">
+</p>
 
-The AI co-pilot for city streets. A citizen photographs a problem in public space; InfraSight turns it into a mapped
-danger, a merged case, a red-outlined damage zone, a picture of the street after repair, a detour, a draft traffic
-order, the documents of each legal stage, and a message back to the citizen in their own language. Built on Meta's
-models: **Muse Spark**, **SAM 3.1** and **Muse Image**, all through the Meta Model API.
+<h1 align="center">InfraSight</h1>
 
-## Built during the Meta Global AI Developer Hackathon
-Everything in this repository was written during the hackathon (first commit 29 Oct 2026, building period
-27 Oct - 4 Nov 2026): the citizen and staff console, the FastAPI backend, the 10 AI functions, the SAM 3.1 damage
-outline, the Muse Image repair preview, danger zones, duplicate merging, detours and traffic orders, hotspots and
-forecast, citizen updates in 9 languages, and the weekly brief. See [AI-FUNCTIONS.md](AI-FUNCTIONS.md) for every AI
-call and [META-MODELS.md](META-MODELS.md) for the models used and their cost.
+<p align="center">
+  <b>The AI co-pilot for city streets.</b><br>
+  A citizen photographs a broken street. Three Meta models turn the photo into a case the town hall can act on:<br>
+  classified, outlined pixel by pixel, priced from sourced rates, routed around, and drafted into legal documents.
+</p>
 
-## Layout
+<p align="center">
+  <a href="https://github.com/abdo0620/InfraSight/actions/workflows/ci.yml"><img src="https://github.com/abdo0620/InfraSight/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/Meta%20Model%20API-Muse%20Spark%20%C2%B7%20SAM%203.1%20%C2%B7%20Muse%20Image-0467DF" alt="Meta models: Muse Spark, SAM 3.1, Muse Image">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB" alt="Python 3.10 or later">
+  <img src="https://img.shields.io/badge/FastAPI-backend-009688" alt="FastAPI backend">
+</p>
+
+<p align="center">
+  <b>Demo video (3 min):</b> <i>[link to add before submission]</i> ·
+  <a href="#for-judges-run-it-in-5-minutes">Run it in 5 minutes</a> ·
+  <a href="#what-to-try-in-3-minutes">What to try</a> ·
+  <a href="AI-FUNCTIONS.md">Every AI call</a>
+</p>
+
+---
+
+<table>
+<tr>
+<td width="44%" valign="top">
+<img src="docs/images/live-pipeline.gif" alt="Live AI analysis of a citizen report: Muse Spark reads the photo, SAM 3.1 outlines the damage, Muse Image draws the street repaired">
+<p align="center"><sub>A real citizen report, recorded on the demo data: Muse Spark triages it, SAM 3.1 outlines the damage, Muse Image draws the street repaired. Sped up about 2.5×; the real run took 115 s.</sub></p>
+</td>
+<td valign="top">
+
+### The problem
+A pothole near a school is reported by text, email or phone. Someone at the town hall has to work out what it is,
+how dangerous it is, who owns the road, what the repair will cost, which procurement rules apply, whether the street
+needs closing and where traffic goes meanwhile. Each step takes days; the citizen hears nothing.
+
+### What InfraSight does
+The citizen sends **one photo and one sentence**, pinned on the map. Then:
+
+- **Muse Spark** classifies it (type, severity, urgency, owner, danger zone), spots duplicates, and names the damage.
+- **SAM 3.1** outlines the damage on the photo, pixel by pixel.
+- **Muse Image** draws the same street once repaired, so everyone sees the goal.
+- Staff get a **full report** with cited regulations, a **cost priced from public unit rates**, a **detour** computed
+  on OpenStreetMap and a **draft traffic order** for the mayor, and AI drafts for each of the **7 legal stages**.
+- The citizen gets **updates in their own language** at every step.
+
+**AI drafts; people decide.** Every AI output is labelled, sourced or marked `[verify]`, and logged.
+
+</td>
+</tr>
+</table>
+
+## For judges: run it in 5 minutes
+
+You need **Python 3.10+** (tested with 3.12 and 3.14) and an internet connection (maps come from OpenStreetMap).
+A **Meta API key** (dev.meta.ai) is needed for the live AI; without one, everything else works and the 4 demo tickets
+already show the SAM 3.1 outline and the Muse Image repair preview.
+
+**Windows**: double-click `start.bat`. **macOS / Linux**: run `./start.sh`.
+
+```bash
+git clone https://github.com/abdo0620/InfraSight.git
+cd InfraSight
+./start.sh            # Windows: start.bat
 ```
-frontend/                  static console, no build step
+
+The first run creates `backend/.venv`, installs the dependencies, and writes `backend/.env` with a random
+`SECRET_KEY` and `DEMO_PASSWORD=demo1234`. Put your key in `backend/.env` (`META_API_KEY=...`), run the script again,
+and open **http://localhost:8000**.
+
+| Account | Password | Role |
+|---|---|---|
+| `citizen` | `demo1234` | reports problems, follows their own reports |
+| `tech` | `demo1234` | municipal technician: the full pipeline |
+| `elected` | `demo1234` | elected official: signs the decision stage |
+
+<details>
+<summary>Manual setup (without the scripts)</summary>
+
+```bash
+cd backend
+python3 -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env                                     # then set META_API_KEY and DEMO_PASSWORD=demo1234
+uvicorn app.main:app --port 8000                         # site: http://localhost:8000, API docs: /docs
+```
+The backend serves the console too: opening `frontend/index.html` as a file does not work.
+</details>
+
+## What to try in 3 minutes
+
+1. **Sign in as `citizen`**, click anywhere on the map, add a photo of a street problem and one sentence, then
+   **Send report**. Watch the live AI analysis (about 1 to 2 minutes for the three models).
+2. **Sign in as `tech`** and open **IS-0042** (Pothole, Rue des Lilas). Drag the **before / after** slider.
+3. **AI report** tab, **Generate full report**: watch each step live, then read the cost estimate, with a source link
+   on every priced line.
+4. Open **IS-0044** (Sunken manhole cover), **Danger and zone** tab, **Plan a detour**: the route around the
+   closed section and the mayor's traffic order, drafted in French.
+5. **Download PDF report** on any ticket; then the **Dashboard**, and **Write this week's brief**.
+
+## A tour
+
+### The map
+Open incidents coloured by severity, the danger zones the AI drew (a point, a whole street section, or an area),
+detours in blue, streets with repeated problems in purple. **Clear** hides everything; **Show all** brings it back.
+
+<img src="docs/images/map.jpg" alt="Staff map of Brest with incidents, danger zones and a detour">
+
+### The ticket: photo, damage, and the street repaired
+The citizen's photo, the damage outlined in red by **SAM 3.1**, and the street repaired by **Muse Image**. The
+preview keeps the real photo everywhere except the damaged area, so cars, signs and light never change. It is
+labelled as an illustration everywhere.
+
+<img src="docs/images/ticket-slider.jpg" alt="Ticket IS-0042 with the before / after slider, the damage zone and the repair preview">
+
+### A cost estimate you can check
+Muse Spark only chooses the work items and the quantities; **the server prices them** from a catalogue of unit
+rates taken from public French price schedules (BPU), and every line links its source. Work the catalogue does not
+cover is marked `[verify]` and a commune replaces the rates with those of its own contract
+([backend/app/prices.py](backend/app/prices.py)).
+
+<img src="docs/images/report-cost.jpg" alt="Cost estimate table: work items, quantities, unit rates, totals, and the source of each rate">
+
+### Detour and traffic order
+For a danger zone that closes a street, InfraSight downloads the road network around it, computes the shortest
+legal detour (one-way streets respected), and Muse Spark drafts the mayor's traffic order (arrêté) in French. What
+only the town hall can decide (order number, dates, signature) stays `[à compléter]`: the AI does not invent it.
+
+<img src="docs/images/detour.jpg" alt="Danger tab of IS-0044 with the detour on the map and the draft traffic order in French">
+
+### Dashboard and weekly brief
+Priority matrix, deadline and safety alerts, committed budget, and a weekly brief for elected officials written by
+Muse Spark from the week's figures.
+
+<img src="docs/images/dashboard.jpg" alt="Dashboard with the weekly brief, key figures, the priority matrix and alerts">
+
+### The incident report, as a PDF
+An A4 report with the four images, the danger, the AI assessment with its sources, the cost table, the 7 stages,
+the detour, the history and the draft traffic order. Real selectable text, a title and a bookmark per section.
+
+<img src="docs/images/pdf-report.jpg" alt="First three pages of the PDF incident report for IS-0042">
+
+### Live progress for every AI action
+Every AI button opens a panel showing the real steps the server is taking, with their results and timings (for
+example SAM 3.1 → Muse Spark → red zone → Muse Image). If a step fails, that step says why and the next ones say
+"Not started".
+
+## How the Meta models are used
+
+All three run on Meta's servers through the **Meta Model API** (`https://api.meta.ai/v1`), with one key. Nothing runs
+on a local GPU.
+
+| Model | What it does in InfraSight |
+|---|---|
+| **Muse Spark** (`muse-spark-1.3`) | Triage of each report, duplicate detection, full report with cited regulations, work items for the cost, real size of the damage from visible references, drafts for the 7 legal stages, traffic order, repair check (before / after photos), hotspot forecast, weekly brief, citizen updates in 9 languages |
+| **SAM 3.1** (`sam-3.1`) | Outlines the damage on the photo. Triage names the object plainly ("bus shelter", "pothole"): SAM finds things by what they are, not their state. Outlines from several phrases are combined; if none lands where triage located the damage, SAM gets that box as a prompt |
+| **Muse Image** (`muse-image-1.0`) | Draws the street repaired, from the photo and the red-marked copy; only the damaged area is kept from the drawing |
+
+Costs and what the hackathon credit buys: [META-MODELS.md](META-MODELS.md). Every AI call, its inputs, outputs and
+page: [AI-FUNCTIONS.md](AI-FUNCTIONS.md).
+
+## Why the AI can be trusted with this
+
+- **The browser never sends a prompt.** All prompts live in [backend/app/services/ai.py](backend/app/services/ai.py).
+  Citizen text goes inside `<data>` tags declared untrusted, so a report cannot steer the model.
+- **Structured output.** JSON answers are validated against schemas; an invalid answer is retried once with the
+  error.
+- **Sources or `[verify]`.** Every legal statement cites the regulatory notes it comes from, or is marked
+  `[verify]`. Amounts come from sourced unit rates, never from the model.
+- **Drafts, not decisions.** Severity, money, closures and signatures are decided by people with the right role.
+  Only an elected official can sign the decision stage. Every action is in the audit log.
+- **Honest images.** The repair preview is labelled as an illustration everywhere, including the PDF.
+- **Every report is on the map.** A report needs a place pinned or picked from OpenStreetMap suggestions; the server
+  refuses free-text locations.
+- **Limits.** Each user gets 30 AI requests per hour. If the AI is down, a report is still saved for manual triage.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  A["Browser<br/>citizen and staff console<br/>(no build step)"] -->|REST + JWT| B["FastAPI backend"]
+  B --> C[("SQLite<br/>tickets, audit log")]
+  B -->|Meta Model API| D["Muse Spark<br/>SAM 3.1<br/>Muse Image"]
+  B -->|addresses, street shapes| E["OpenStreetMap<br/>Nominatim"]
+  B -->|road network for detours| F["OpenStreetMap<br/>Overpass"]
+  B --> G["PDF report<br/>(ReportLab)"]
+```
+
+<details>
+<summary>Project layout</summary>
+
+```
+start.bat / start.sh       one-command start (Windows / macOS, Linux)
+frontend/                  static console, no build step, served by the backend
   index.html  css/styles.css
-  js/app.js                views, pipeline, charts, login screen (edit here)
-  js/mapview.js            YOUR Leaflet map (index.js) adapted: CityMap.init({role, tickets, zones, onPin, onZone})
-  js/map.js                danger zone drawing (point / street / area), mini map in the ticket's Danger tab
-  js/api.js                backend client: login token + one function per ticket action (no prompts)
-  js/config.js             backend address (empty = the same server as the page)
+  js/app.js                views, live AI panels, charts, sign-in
+  js/mapview.js            the Leaflet map: incidents, danger zones, detours, hotspots
+  js/map.js                danger zone drawing (point / street / area), mini map in the ticket
+  js/api.js                backend client: login token and one function per action (no prompts)
 backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created on first start)
-  app/db.py                tables: users, tickets, audit_log, zones
-  app/auth.py              passwords (scrypt), login tokens (JWT), role checks, signed photo links, AI rate limit
-  app/regulations.py       stages, checklists, directory, regulatory notes (single source, served by GET /api/meta)
-  app/serializers.py       DB rows -> frontend ticket shape, filtered per user; AI context for a ticket
-  app/routers/auth.py      POST /api/auth/login, /api/auth/register (citizens), GET /api/auth/me
-  app/routers/tickets.py   state, create (with AI triage), report, stage assist, checklist, advance, photo, zones
-  app/routers/stats.py     GET /api/stats (staff)
-  app/services/            ai.py (all prompts, Muse Spark calls), geo.py (OpenStreetMap: pin -> address,
-                           street shapes), routing.py (detours), vision.py (SAM 3.1 outline), notify.py (citizen
-                           updates), images.py, export.py (report HTML with all images), visuals.py (red
-                           damage zone, Muse Image repair preview)
-  app/routers/insights.py  hotspots + forecast, weekly brief, notifications
-  app/seed.py              sample tickets and demo users (SEED_DEMO)
+  app/routers/             auth, tickets (report, damage, preview, detour, stages, PDF), insights, stats
+  app/services/ai.py       every prompt and Muse Spark / Muse Image call
+  app/services/vision.py   SAM 3.1 outline
+  app/services/visuals.py  red damage zone, repair preview, background pipeline after a report
+  app/services/routing.py  detours on the OpenStreetMap road network
+  app/services/geo.py      addresses, street shapes, address suggestions
+  app/services/export.py   the PDF incident report
+  app/services/progress.py live steps of an AI action
+  app/prices.py            unit rates and their sources, used to price the cost estimate
+  app/regulations.py       stages, checklists, directory, regulatory notes (single source)
+  app/seed.py              4 demo tickets and the demo users
   app/cli.py               create staff accounts, change roles and passwords
 ```
+</details>
 
-## Run
-Windows: double-click `start.bat`, then open http://localhost:8000. The first run creates `backend/.venv` and
-`backend/.env` (with a generated `SECRET_KEY` and `DEMO_PASSWORD=demo1234`). Put your `META_API_KEY` in `backend/.env`
-and restart. Other systems:
-```
-cd backend && python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt && cp .env.example .env              # fill META_API_KEY, SECRET_KEY, DEMO_PASSWORD
-uvicorn app.main:app --reload                                        # site: http://localhost:8000, API docs: /docs
-```
-The backend serves the console too. Opening `frontend/index.html` as a file does not work.
+<details>
+<summary>Configuration (backend/.env)</summary>
 
-## Meta models
-All three run on Meta's servers through the Meta Model API (`https://api.meta.ai/v1`), with one key from dev.meta.ai
-(`META_API_KEY`). Nothing runs on a GPU locally.
-
-| Model | Used for | Setting |
+| Variable | Default | Purpose |
 |---|---|---|
-| Muse Spark (`muse-spark-1.3` recommended) | triage, reports, stage documents, size estimate, repair check, traffic order, forecast, brief, citizen updates | `MODEL_QUICK` (triage, updates), `MODEL_DEFAULT` (the rest); empty = `muse-spark-1.1` |
-| SAM 3.1 (`sam-3.1`) | exact outline of the damage on the photo | none |
-| Muse Image (`muse-image-1.0`) | the street after repair, drawn from the citizen photo | `MODEL_IMAGE` |
+| `META_API_KEY` | empty | key from dev.meta.ai; without it, reports are saved for manual triage |
+| `MODEL_QUICK`, `MODEL_DEFAULT` | `muse-spark-1.1` | Muse Spark model for triage and updates / for everything else (`muse-spark-1.3` recommended) |
+| `MODEL_IMAGE` | `muse-image-1.0` | repair preview |
+| `COMMUNE_NAME` | empty | written in the drafted traffic orders, and used to find addresses nearby |
+| `SECRET_KEY` | random per start | signs login tokens and photo links (the start scripts generate one) |
+| `SEED_DEMO`, `DEMO_PASSWORD` | `true`, empty | demo tickets on an empty database, and the 3 demo accounts. Never in production |
+| `DATABASE_URL` | `sqlite:///./infrasight.db` | any SQLAlchemy URL |
+| `AI_CALLS_PER_HOUR` | 30 | per user |
+| `DUPLICATE_RADIUS_M` | 80 | a new report this close to an open ticket may be merged into it |
+| `OVERPASS_URLS` | 5 public servers | road data for detours, tried in order; a street's network is cached for a week |
+</details>
 
-Without a key, reports are still saved for manual triage. Prices and what the hackathon credit buys:
-[META-MODELS.md](META-MODELS.md).
+<details>
+<summary>Accounts and roles</summary>
 
-With `SEED_DEMO=true` and `DEMO_PASSWORD` set, an empty database gets 4 sample tickets in Brest and three users:
-`citizen`, `tech`, `elected` (password = `DEMO_PASSWORD`). Do not enable this in production. The sample photos
-(`backend/app/demo_photos/`) are not real citizen photos: they were generated with Muse Image, then run once through
-the real pipeline (SAM 3.1 outline, Muse Image repair preview), so the demo shows every feature without AI calls at
-start. Every report needs a photo.
+- Citizens sign up on the sign-in screen. They see their own reports in full; other reports appear on the map and
+  in the insights without photo, history or AI output.
+- Staff accounts are created by an administrator: `python -m app.cli create-user jdupont tech "Jean Dupont"`
+  (roles: citizen, tech, elected), also `set-role` and `set-password`.
+- Technicians and elected officials run the pipeline; only an elected official signs the decision stage. The
+  server writes every action to the audit log with the user's name.
+</details>
 
-## Accounts and roles
-- Citizens sign up on the sign-in screen. They see full details of their own reports only; other reports appear on
-  the map and in the insights without photo, history or AI output.
-- Staff accounts are created by an administrator:
-  `python -m app.cli create-user jdupont tech "Jean Dupont"` (roles: citizen, tech, elected).
-  Also `set-role` and `set-password`.
-- Technicians and elected officials run the pipeline. Only an elected official can sign the decision stage.
-  Every action is written to the audit log by the server, with the user's name.
+<details>
+<summary>All features</summary>
 
-## AI
-The browser never sends a prompt. Prompts are in `backend/app/services/ai.py`; the endpoints are
-`POST /api/tickets` (triage), `POST /api/tickets/{ref}/report` and `POST /api/tickets/{ref}/stages/{i}/assist`.
-Every call sends a system message (role, steps, definitions of type, severity, urgency and owner, output schema) and
-a user message with the data inside `<data>` tags, declared untrusted so citizen text cannot steer the model. Legal
-statements must cite their source from the regulatory notes in `regulations.py`, or be marked `[verify]`. JSON
-answers are validated against `schemas.py`; an invalid answer is retried once with the validation error. Each user
-gets `AI_CALLS_PER_HOUR` AI requests (default 30, in memory). If triage fails, the report is still saved for manual
-triage. Every AI call is described in [AI-FUNCTIONS.md](AI-FUNCTIONS.md).
+- **Duplicate merging.** A new report within 80 m of an open ticket that the AI judges to be the same problem is added
+  to it: the citizen follows that ticket, the photo goes into its history, severity can rise. Staff can also merge by
+  hand.
+- **Live AI pipeline.** After "Send report", the citizen watches Muse Spark's triage, SAM 3.1's outline and Muse
+  Image's repaired street appear, with timings. SAM and Muse Image run in the background on the server.
+- **Damage zone.** First the box Muse Spark gives at triage, then the exact SAM 3.1 outline. "Outline and measure the
+  damage" redoes it and has Muse Spark estimate the real size from visible references (kerb, road marking, manhole).
+- **Repair preview and before / after slider.** Mouse, touch and keyboard. Once the work is done, the real
+  after-repair photo replaces the illustration.
+- **Danger zones.** `point`, `street` (the whole street section, shape from OpenStreetMap) or `area`; the colour
+  follows the danger level, red when access is blocked.
+- **Cost estimate** priced from sourced unit rates; the ticket's estimate follows the report.
+- **Detour and traffic order**, with `COMMUNE_NAME`; staff can remove a detour from the ticket or from the map.
+- **The 7 legal stages**, from intake to acceptance, with checklists and an AI draft for each stage.
+- **Repair check.** At acceptance, the AI compares the after-repair photo with the citizen's.
+- **Hotspots and forecast.** Streets with 2+ reports in 12 months; the AI proposes preventive work and a budget.
+- **Updates** for citizens in their language (9 languages), and a weekly brief for elected officials.
+- **PDF incident report** (not a fully tagged PDF/UA).
+</details>
 
-## Danger zones
-The AI gives each zone a `shape`: `point` (small circle: broken streetlight, small pothole at the edge), `street` (the
-problem disrupts traffic or passage: the whole street section is drawn, `radius_m` = length affected) or `area` (wide
-dashed circle: flooding, gas leak, risk of collapse). The colour follows the danger level, and is red whenever
-`blocked_access` is true. Street shapes come from OpenStreetMap (Nominatim, max 1 request per second); missing ones
-are fetched again at each start. A map pin's default text is replaced by the real address.
+## Honest notes
 
-## AI features
-- **Duplicate merging.** A new report within `DUPLICATE_RADIUS_M` (80 m) of an open ticket that the AI judges to be the
-  same problem is added to that ticket: the citizen follows it, the photo goes in its history, severity can rise.
-  Staff see possible duplicates on the ticket overview and can merge by hand (the duplicate is closed).
-- **Live AI pipeline.** After "Send report", the citizen watches the three Meta models work, step by step, with
-  timings: Muse Spark's triage (title, type, severity, owner), SAM 3.1's outline, then Muse Image's repaired street.
-  The photo in the panel changes at each step. SAM 3.1 and Muse Image run in the background on the server; the panel
-  polls the ticket until they finish, and each result is saved on a freshly loaded ticket so a duplicate merged
-  meanwhile is not overwritten.
-- **Damage zone.** Every report with a photo gets the damaged area drawn in red: first from the box Muse Spark gives
-  at triage, then from the exact SAM 3.1 outline, computed in the background. "Outline and measure the damage" redoes
-  it and has Muse Spark estimate the real size from visible references (kerb, road marking, manhole).
-- **Repair preview.** Muse Image draws the citizen's photo as it should look after the repair, from the photo and the
-  red-marked copy. Only the damaged area (SAM outlines and the triage box, widened, soft edge) is taken from the
-  drawing; the rest stays the real photo, so cars, signs and light never change. Labelled everywhere as an
-  illustration, not a photo. Staff can redraw it.
-- **Every report is on the map.** A citizen pins the place on the map, or types an address and picks one of the
-  OpenStreetMap suggestions (`GET /api/geocode`, near `COMMUNE_NAME`). The server refuses a report without a place
-  and stores the address read from the map, not free text.
-- **Better outlines.** Triage names the damage it sees ("cracked asphalt", "broken paving slab"); SAM 3.1 tries that
-  phrase first, then phrases for the ticket type (at most 3 calls). Outlines covering half the photo are dropped,
-  and one that overlaps the triage box is preferred over damage further down the street.
-- **Sourced cost estimate.** Muse Spark only lists the work items and quantities (from the measured damage size);
-  the server prices them from `backend/app/prices.py`, unit rates taken from public French price schedules (BPU),
-  each line with its source link. Work the catalogue does not cover is marked `[verify]`. A commune replaces the
-  rates with those of its own works contract. The ticket's estimate follows the report.
-- **Live progress for every AI action.** Full report, detour, stage drafts, damage analysis, repair preview, repair
-  check, weekly brief and forecast open a panel that shows each real step as the server does it (for example SAM 3.1
-  → Muse Spark → red zone → Muse Image), with its result and timing. The console sends a random id in the
-  `X-Progress` header and reads `GET /api/progress/{id}` every 0.4 s (`services/progress.py`).
-- **Before / after slider.** On the ticket, a handle reveals the citizen's photo or the repaired street (Muse Image
-  illustration, or the real after-repair photo once there is one). Mouse, touch and keyboard.
-- **Images everywhere.** Photo, damage zone, repair preview and after-repair photo appear on the ticket, the AI
-  report, the danger tab, the acceptance stage (before / expected / after), map popups and the downloaded report.
-  Muse Spark also receives the red-marked photo for the full report and the repair check.
-- **Incident report (PDF).** "Download PDF report" on the AI report tab (staff): an A4 PDF with the InfraSight logo, key
-  facts, the four images, damage size, danger, the AI assessment with cited sources, the 7 stages, repair check,
-  detour, history and the draft traffic order. Real selectable text, document language and title, a bookmark per
-  section (`services/export.py`, ReportLab). Not a fully tagged PDF/UA.
-- **Repair check.** At the last stage, staff add an after-repair photo; the AI compares it with the citizen's photo.
-- **Detour and traffic order.** For a street danger zone, "Plan a detour" downloads the roads around it (Overpass,
-  `OVERPASS_URLS`, tried in order), computes the shortest legal route around the blocked section (one-way streets
-  respected), and the AI drafts the mayor's traffic order (arrêté) in French. Takes up to a minute. The commune's name comes from `COMMUNE_NAME` in `.env`; the order
-  number, the dates and hours of the closure and the signing date stay `[à compléter]`: only the town hall decides
-  them, so the AI does not invent them. Staff can remove a detour (route and draft order) from the Danger tab, or by
-  clicking the blue dashed line on the map, and show or hide all detours with the "Detours" button.
-- **Hotspots.** Streets with 2+ reports in 12 months (Hotspots page, purple rings on the map); the AI forecast proposes
-  preventive actions and a budget.
-- **Updates.** Citizens get a short message at each step, written by the AI in the language they chose (Updates page);
-  without AI, a plain template. Staff get an AI weekly brief on the dashboard.
+- **Demo data.** The 4 demo photos are not real citizen photos: they were generated with Muse Image, then run once
+  through the real pipeline (SAM 3.1 outline, Muse Image preview), so the demo shows every feature without AI calls at
+  start. The screenshots above were taken on that demo data, with real Muse Spark, SAM 3.1 and Muse Image calls.
+- **Unit rates** come from 2021-2024 public price schedules of a few French public bodies: indicative, to be replaced
+  by a commune's own contract rates. **Regulatory notes** need a legal review before real use.
+- **Public map services** (Nominatim, Overpass) are free and rate-limited; detours can take up to a minute on a busy
+  day. A real deployment would run its own servers.
+- **Hosting.** No hosted copy: the project runs from this repository. CI starts it on every push
+  ([ci.yml](.github/workflows/ci.yml)): smoke tests on the API, `./start.sh` on a fresh checkout, JavaScript syntax.
 
-## Deployment
-- **CI** (`.github/workflows/ci.yml`): installs the backend and smoke-tests login, tickets and stats on a temporary
-  database; checks the JavaScript syntax. No AI calls, no key needed.
-- **No hosted copy.** Run it from this repository (see Run). The console and the API are served by the same
-  backend; to host it, run the backend on a server and open its address.
+## Built during the Meta Global AI Developer Hackathon
 
-## To complete
-1. PostgreSQL + PostGIS (`DATABASE_URL`), Alembic migrations. Until then, new columns are added at start
-   (`db.add_missing_columns`); renames or type changes still need a fresh `infrasight.db`.
-2. `GET /api/stats` into the charts; own Nominatim server (or a paid geocoder) for real traffic.
-3. Legal review of every figure in `backend/app/regulations.py`.
-4. Password reset by email, login attempt limiting; Redis for the rate limit if you run several workers.
-5. `due` is a day count set by hand; turn it into a real deadline date.
+Everything in this repository was written during the hackathon (first commit 29 Oct 2026, building period
+27 Oct - 4 Nov 2026).
+
+**Next steps:** PostgreSQL + PostGIS with migrations; own Nominatim and Overpass servers; a legal review of
+`regulations.py`; password reset by email and login attempt limiting; real deadline dates instead of day counts.
