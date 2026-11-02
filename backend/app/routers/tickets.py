@@ -82,11 +82,13 @@ def one(ref: str, u: User = Depends(current_user), s: Session = Depends(get_db))
 @router.post("/tickets")
 async def create(bg: BackgroundTasks, addr: str = Form(..., min_length=1, max_length=200),
                  desc: str = Form(..., min_length=1, max_length=4000), lat: float | None = Form(None),
-                 lng: float | None = Form(None), image: UploadFile | None = File(None),
+                 lng: float | None = Form(None), image: UploadFile = File(...),
                  u: User = Depends(ai_quota), s: Session = Depends(get_db)):
     """A citizen report. The server assigns the number, stores the photo and runs the AI triage. If the AI finds the
     same problem in an open ticket close by, the report is added to that ticket instead (duplicate merging)."""
-    img = images.normalize(await image.read()) if image and image.filename else None
+    if not image.filename:
+        raise HTTPException(422, "A photo of the problem is required")
+    img = images.normalize(await image.read())
     road = None
     if lat is not None and lng is not None:
         found, road = await run_in_threadpool(geo.place, lat, lng)
