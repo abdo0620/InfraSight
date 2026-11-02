@@ -107,7 +107,25 @@ are fetched again at each start. A map pin's default text is replaced by the rea
   at triage, then from the exact SAM 3.1 outline, computed in the background. "Outline and measure the damage" redoes
   it and has Muse Spark estimate the real size from visible references (kerb, road marking, manhole).
 - **Repair preview.** Muse Image draws the citizen's photo as it should look after the repair, from the photo and the
-  red-marked copy. Labelled everywhere as an illustration, not a photo. Staff can redraw it.
+  red-marked copy. Only the damaged area (SAM outlines and the triage box, widened, soft edge) is taken from the
+  drawing; the rest stays the real photo, so cars, signs and light never change. Labelled everywhere as an
+  illustration, not a photo. Staff can redraw it.
+- **Every report is on the map.** A citizen pins the place on the map, or types an address and picks one of the
+  OpenStreetMap suggestions (`GET /api/geocode`, near `COMMUNE_NAME`). The server refuses a report without a place
+  and stores the address read from the map, not free text.
+- **Better outlines.** Triage names the damage it sees ("cracked asphalt", "broken paving slab"); SAM 3.1 tries that
+  phrase first, then phrases for the ticket type (at most 3 calls). Outlines covering half the photo are dropped,
+  and one that overlaps the triage box is preferred over damage further down the street.
+- **Sourced cost estimate.** Muse Spark only lists the work items and quantities (from the measured damage size);
+  the server prices them from `backend/app/prices.py`, unit rates taken from public French price schedules (BPU),
+  each line with its source link. Work the catalogue does not cover is marked `[verify]`. A commune replaces the
+  rates with those of its own works contract. The ticket's estimate follows the report.
+- **Live progress for every AI action.** Full report, detour, stage drafts, damage analysis, repair preview, repair
+  check, weekly brief and forecast open a panel that shows each real step as the server does it (for example SAM 3.1
+  → Muse Spark → red zone → Muse Image), with its result and timing. The console sends a random id in the
+  `X-Progress` header and reads `GET /api/progress/{id}` every 0.4 s (`services/progress.py`).
+- **Before / after slider.** On the ticket, a handle reveals the citizen's photo or the repaired street (Muse Image
+  illustration, or the real after-repair photo once there is one). Mouse, touch and keyboard.
 - **Images everywhere.** Photo, damage zone, repair preview and after-repair photo appear on the ticket, the AI
   report, the danger tab, the acceptance stage (before / expected / after), map popups and the downloaded report.
   Muse Spark also receives the red-marked photo for the full report and the repair check.
@@ -118,7 +136,10 @@ are fetched again at each start. A map pin's default text is replaced by the rea
 - **Repair check.** At the last stage, staff add an after-repair photo; the AI compares it with the citizen's photo.
 - **Detour and traffic order.** For a street danger zone, "Plan a detour" downloads the roads around it (Overpass,
   `OVERPASS_URLS`, tried in order), computes the shortest legal route around the blocked section (one-way streets
-  respected), and the AI drafts the mayor's traffic order (arrêté) in French. Takes up to a minute.
+  respected), and the AI drafts the mayor's traffic order (arrêté) in French. Takes up to a minute. The commune's name comes from `COMMUNE_NAME` in `.env`; the order
+  number, the dates and hours of the closure and the signing date stay `[à compléter]`: only the town hall decides
+  them, so the AI does not invent them. Staff can remove a detour (route and draft order) from the Danger tab, or by
+  clicking the blue dashed line on the map, and show or hide all detours with the "Detours" button.
 - **Hotspots.** Streets with 2+ reports in 12 months (Hotspots page, purple rings on the map); the AI forecast proposes
   preventive actions and a budget.
 - **Updates.** Citizens get a short message at each step, written by the AI in the language they chose (Updates page);
