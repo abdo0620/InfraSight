@@ -1,6 +1,8 @@
 @echo off
 rem InfraSight: installs on first run, then starts the site on http://localhost:8000
 cd /d "%~dp0backend"
+rem Port 8000 already taken (often an older InfraSight still running): say so instead of failing silently
+netstat -ano -p tcp | findstr /c:":8000 " | findstr /c:"0.0.0.0:0" >nul && goto :busy
 if not exist .venv\Scripts\python.exe (
   echo Creating the Python environment, first run only...
   python -m venv .venv || goto :fail
@@ -19,4 +21,13 @@ echo.
 goto :eof
 :fail
 echo Setup failed. Is Python 3.10+ installed and on PATH?
+pause
+goto :eof
+:busy
+echo.
+echo   Port 8000 is already used by another program, probably an older InfraSight server.
+echo   Close its window, or stop it with:  taskkill /PID ^<number^> /F
+echo   The number is the last column below:
+netstat -ano -p tcp | findstr /c:":8000 " | findstr /c:"0.0.0.0:0"
+echo.
 pause
