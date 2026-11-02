@@ -34,7 +34,8 @@ function initMunicipalMap(opts) {
   });
 
   map.createPane('redDotsPane');
-  map.getPane('redDotsPane').style.zIndex = 9999;
+  // above the danger zones (400) and cluster icons (600), below tooltips (650) and incident popups (700)
+  map.getPane('redDotsPane').style.zIndex = 620;
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
