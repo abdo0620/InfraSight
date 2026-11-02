@@ -74,8 +74,39 @@ async function assist(id,i){const t=byId(id),o=$("ao"+i);o.textContent="Thinking
 function chk(id,i,k,v){const t=byId(id);act(()=>CF.check(t.ref,i,k,v))}
 async function adv(id){const t=byId(id);try{const n=upd(await CF.advance(t.ref));toast(n.st>6?"Ticket closed and citizen informed":"Moved to "+stN(n));tab="pl"}catch(e){toast(e.message)}draw()}
 async function submitNew(){const f=$("nf").files[0],a=$("na").value.trim(),d=$("nd").value.trim(),b=$("nb"),r=$("nr");if(!f){toast("Add a photo of the problem: reports need one");return}if(!a||!d){toast("Add an address and a description");return}
-b.disabled=true;r.textContent="Classifying your report…";const fd=new FormData();fd.append("addr",a);fd.append("desc",d);if(PIN){fd.append("lat",PIN.lat);fd.append("lng",PIN.lng)}fd.append("image",f);
-try{const j=await CF.create(fd),t=upd(j.ticket);PIN=null;NOTES=null;toast(j.merged_into?"This problem was already reported: your report was added to "+t.ref+". You will get its updates.":"Report "+t.ref+" registered"+(j.ai_error?". "+j.ai_error:""));tab="ov";go("ticket-"+t.id)}catch(e){r.textContent=e.message;b.disabled=false}}
+b.disabled=true;r.textContent="";const fd=new FormData();fd.append("addr",a);fd.append("desc",d);if(PIN){fd.append("lat",PIN.lat);fd.append("lng",PIN.lng)}fd.append("image",f);
+pipeOpen(f);try{const j=await CF.create(fd),t=upd(j.ticket);PIN=null;NOTES=null;pipeTriage(j,t)}catch(e){r.textContent=e.message;b.disabled=false;pipeSet("spark","err",esc(e.message));pipeSet("sam","skip","Not started");pipeSet("img","skip","Not started");pipeDone(null)}}
+// Live AI pipeline: while a report is processed the citizen watches each Meta model work, instead of a spinner.
+// Muse Spark answers with the report; SAM 3.1 and Muse Image run after it on the server (services/visuals.py),
+// so their results are polled until they arrive.
+let PIPE=null;
+const PSTEPS=[["spark","Muse Spark","Reading your photo and your words…"],["sam","SAM 3.1","Waits for the triage"],["img","Muse Image","Waits for the outline"]];
+function pipeOpen(file){pipeClose();const url=file?URL.createObjectURL(file):"";PIPE={t0:Date.now(),timer:setInterval(()=>{const e=$("pipe-time");if(e)e.textContent=((Date.now()-PIPE.t0)/1000).toFixed(1)+" s"},100),url};
+const d=document.createElement("div");d.id="pipe";d.className="pipe";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");d.setAttribute("aria-labelledby","pipe-title");
+d.innerHTML=`<div class="pipe-card"><div class="pipe-head"><div><p class="pipe-k">Live AI analysis</p><h2 id="pipe-title">Analysing your report</h2></div><span class="pipe-time" id="pipe-time" aria-hidden="true">0.0 s</span></div>
+<div class="pipe-photo" id="pipe-photo">${url?`<img src="${url}" alt="Your photo">`:""}<span class="pipe-lbl" id="pipe-lbl">Your photo</span></div>
+<ol class="pipe-steps" aria-live="polite">${PSTEPS.map(s=>`<li id="ps-${s[0]}" class="wait"><span class="pi" aria-hidden="true"></span><div><b>${s[1]}</b><span class="pr">${s[2]}</span></div><span class="pt"></span></li>`).join("")}</ol>
+<div class="pipe-foot" id="pipe-foot"></div></div>`;document.body.appendChild(d);pipeSet("spark","run")}
+function pipeSet(k,state,text){const li=$("ps-"+k);if(!li)return;li.className=state;if(text!=null)li.querySelector(".pr").innerHTML=text;
+if(state=="ok"||state=="err"||state=="skip")li.querySelector(".pt").textContent=state=="skip"?"":((Date.now()-PIPE.t0)/1000).toFixed(1)+" s"}
+function pipePhoto(src,label){const box=$("pipe-photo");if(!box||!src)return;const im=new Image();im.alt=label;im.className="in";im.onload=()=>{box.insertBefore(im,$("pipe-lbl"));requestAnimationFrame(()=>im.classList.remove("in"));const old=[...box.querySelectorAll("img")].slice(0,-1);setTimeout(()=>old.forEach(o=>o.remove()),700);$("pipe-lbl").textContent=label};im.src=src}
+function pipeTriage(j,t){
+if(j.merged_into){pipeSet("spark","ok",`Same problem as <b>${esc(t.ref)}</b>: your report joined that case, you will get its updates`);pipeSet("sam","skip","Already done on that case");pipeSet("img","skip","Already done on that case");return pipeDone(t)}
+if(j.ai_error){pipeSet("spark","err",esc(j.ai_error));pipeSet("sam","skip","Not started");pipeSet("img","skip","Not started");return pipeDone(t)}
+pipeSet("spark","ok",`<b>${esc(t.title)}</b> · ${esc(t.type)} · severity ${t.sev}/5 · ${esc(OWN[t.owner]||t.owner)}`);
+if(t.zone_img)pipePhoto(t.zone_img,"Damage located by Muse Spark");
+pipeSet("sam","run","Outlining the damage on your photo…");pipePoll(t.ref,0)}
+async function pipePoll(ref,n){if(!PIPE||!$("pipe"))return;let t;try{t=upd(await CF.one(ref))}catch(e){t=null}
+if(t){const sam=$("ps-sam").className,img=$("ps-img").className;
+if(sam=="run"&&t.sam_state){if(t.sam_state=="done"){pipeSet("sam","ok","Damage outlined in red, pixel by pixel");pipePhoto(t.zone_img,"SAM 3.1 · damage outline")}else pipeSet("sam",t.sam_state=="error"?"err":"ok",t.sam_state=="error"?"Outline not available: the AI's box is used":"No clear outline: the AI's box is used");pipeSet("img","run","Drawing your street, repaired…")}
+if((sam=="run"||img=="run"||img=="wait")&&t.preview_img){if($("ps-sam").className=="run")pipeSet("sam","ok","Damage outlined");pipeSet("img","ok","Here is your street once repaired <span class=\"mu\">(illustration)</span>");pipePhoto(t.preview_img,"Muse Image · after repair (illustration)");return pipeDone(t)}
+if(t.preview_state&&t.preview_state!="pending"){pipeSet("img","err","Preview not available: "+esc(t.preview_state));return pipeDone(t)}}
+if(n>80){pipeSet($("ps-sam").className=="run"?"sam":"img","err","Still working: it will appear on your report");return pipeDone(t)}
+PIPE.poll=setTimeout(()=>pipePoll(ref,n+1),1500)}
+function pipeDone(t){if(!PIPE)return;clearInterval(PIPE.timer);const f=$("pipe-foot");if(!f)return;
+f.innerHTML=`<p class="mu">${t?`Report <b>${esc(t.ref)}</b> registered. Every AI result is checked by the town hall's staff.`:"Your report was not sent."}</p><div class="row">${t?`<button class="btn" id="pipe-open">Open my report</button>`:""}<button class="btn alt" id="pipe-close">Close</button></div>`;
+const o=$("pipe-open");if(o)o.onclick=()=>{pipeClose();tab="ov";go("ticket-"+t.id)};$("pipe-close").onclick=pipeClose;(o||$("pipe-close")).focus()}
+function pipeClose(){if(PIPE){clearInterval(PIPE.timer);clearTimeout(PIPE.poll);if(PIPE.url)URL.revokeObjectURL(PIPE.url)}PIPE=null;const d=$("pipe");if(d)d.remove()}
 function setTab(x){tab=x;draw()}
 function go(h){location.hash=h}
 function draw(){const h=(location.hash||"#"+NAV[role][0][0]).slice(1),p=h.indexOf("-"),v=p<0?h:h.slice(0,p),id=p<0?null:h.slice(p+1);let k=v;if(!VIEW[k]||(k!="ticket"&&!NAV[role].some(n=>n[0]==k)))k=NAV[role][0][0];

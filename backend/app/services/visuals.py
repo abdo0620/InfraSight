@@ -71,43 +71,70 @@ def set_zone(t: Ticket, photo: bytes, objects: list[dict] | None = None, box: li
     return path
 
 
-def make_preview(t: Ticket) -> str:
-    """Ask Muse Image for the repaired photo and store it on the ticket. Raises HTTPException when it fails."""
+def draw_preview(t: Ticket) -> bytes:
+    """Ask Muse Image for the repaired photo (slow: about 20 s). Raises HTTPException when it fails."""
     photo = read(t.image_path)
     if not photo:
         raise HTTPException(409, "This ticket has no photo")
+    zone = read(((t.data or {}).get("visual") or {}).get("zone"))
+    return images.normalize(ai.repair_preview(photo, zone, t.type, t.desc))
+
+
+def store_preview(t: Ticket, img: bytes) -> str:
     v = (t.data or {}).get("visual") or {}
-    img = images.normalize(ai.repair_preview(photo, read(v.get("zone")), t.type, t.desc))
     _drop(v.get("preview"))
     path = _save(t.ref, img, "preview")
     t.data = {**(t.data or {}), "visual": {**v, "preview": path, "preview_error": None, "pending": False}}
     return path
 
 
+def make_preview(t: Ticket) -> str:
+    """Draw the repaired photo and store it on the ticket (staff buttons). Raises HTTPException when it fails."""
+    return store_preview(t, draw_preview(t))
+
+
 def preview_later(ref: str) -> None:
     """Background task after a citizen report (FastAPI BackgroundTasks), nobody waits for it:
-    SAM 3.1 outlines the damage (exact red zone instead of the triage box), then Muse Image draws the repair."""
+    SAM 3.1 outlines the damage (exact red zone instead of the triage box), then Muse Image draws the repair.
+    The slow AI calls run with no ticket loaded; each result is saved on a freshly loaded ticket, so changes made
+    meanwhile by a request (a merged duplicate, a staff action) are kept."""
     with SessionLocal() as s:
         t = s.get(Ticket, ref)
         if not t:
             return
-        photo = read(t.image_path)
-        try:
-            objects = vision.outline(photo, t.type) if photo else None
-            if objects:
-                t.data = {**(t.data or {}), "damage": {"objects": objects, "size": None, "sam": True}}
-                path = set_zone(t, photo, objects)
-                t.audit.append(Audit(d=date.today().isoformat(), user_id=None, has_img=False, image_path=path,
-                                     w="AI assistant", e=f"Damage outlined by SAM 3.1 ({len(objects)} area"
-                                                          f"{'s' if len(objects) > 1 else ''})" + AI_TAG))
-        except HTTPException as e:                   # keep the triage box
-            logging.warning("SAM outline for %s not made: %s", ref, e.detail)
-        try:
-            path = make_preview(t)
+        photo, kind = read(t.image_path), t.type
+    sam, objects = "none", None                       # what the live pipeline on the report page shows
+    try:
+        objects = vision.outline(photo, kind) if photo else None
+        sam = "done" if objects else "none"
+    except HTTPException as e:                        # keep the triage box
+        logging.warning("SAM outline for %s not made: %s", ref, e.detail)
+        sam = "error"
+    with SessionLocal() as s:
+        t = s.get(Ticket, ref)
+        if objects:
+            t.data = {**(t.data or {}), "damage": {"objects": objects, "size": None, "sam": True}}
+            path = set_zone(t, photo, objects)
+            t.audit.append(Audit(d=date.today().isoformat(), user_id=None, has_img=False, image_path=path,
+                                 w="AI assistant", e=f"Damage outlined by SAM 3.1 ({len(objects)} area"
+                                                      f"{'s' if len(objects) > 1 else ''})" + AI_TAG))
+        t.data = {**(t.data or {}), "visual": {**((t.data or {}).get("visual") or {}), "sam": sam}}
+        s.commit()                                    # SAM result visible now, while Muse Image is still drawing
+        s.refresh(t)
+        s.expunge(t)                                  # detached copy, only to read the photo and zone below
+    img, err = None, None
+    try:
+        img = draw_preview(t)
+    except HTTPException as e:
+        logging.warning("Repair preview for %s not made: %s", ref, e.detail)
+        err = e.detail
+    with SessionLocal() as s:
+        t = s.get(Ticket, ref)
+        if img:
+            path = store_preview(t, img)
             t.audit.append(Audit(d=date.today().isoformat(), user_id=None, has_img=False, image_path=path,
                                  w="AI assistant", e="Repair preview drawn (illustration)" + AI_TAG))
-        except HTTPException as e:
-            logging.warning("Repair preview for %s not made: %s", ref, e.detail)
-            v = (t.data or {}).get("visual") or {}
-            t.data = {**(t.data or {}), "visual": {**v, "preview_error": e.detail, "pending": False}}
+        else:
+            vis = (t.data or {}).get("visual") or {}
+            t.data = {**(t.data or {}), "visual": {**vis, "preview_error": err, "pending": False}}
         s.commit()

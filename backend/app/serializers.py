@@ -35,6 +35,7 @@ def to_front(t: Ticket, viewer: User) -> dict:
          "zone_img": file_url((d.get("visual") or {}).get("zone")),
          "preview_img": file_url((d.get("visual") or {}).get("preview")),
          "preview_state": "pending" if (d.get("visual") or {}).get("pending") else (d.get("visual") or {}).get("preview_error"),
+         "sam_state": (d.get("visual") or {}).get("sam"),     # done / none / error, set by the background pipeline
          "after": after and {**after, "img": file_url(after.get("path")), "path": None},
          "followers": len(d.get("followers") or []), "merged_into": d.get("merged_into"),
          "log": [{"d": a.d, "w": a.w, "e": a.e, "img": file_url(a.image_path) or (img if a.has_img else None)}
@@ -43,7 +44,8 @@ def to_front(t: Ticket, viewer: User) -> dict:
         return f
     return {k: f[k] for k in PUBLIC} | {"own": 0, "ai": {}, "ch": {}, "log": [], "rep": None, "img": None,
                                         "damage": None, "detour": None, "after": None, "followers": 0, "merged_into": None,
-                                        "zone_img": None, "preview_img": None, "preview_state": None}
+                                        "zone_img": None, "preview_img": None, "preview_state": None,
+                                        "sam_state": None}
 
 
 def stage_name(st: int) -> str:

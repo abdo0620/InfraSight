@@ -5,11 +5,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 from sqlalchemy.orm import Session
 from ..auth import STAFF, ai_quota, check_image, current_user, staff, user_label
 from ..config import settings
-from ..db import Audit, Ticket, User, Zone, get_db
+from ..db import Audit, SessionLocal, Ticket, User, Zone, get_db
 from ..regulations import DECISION_STAGE, OWNERS, STAGES
 from ..schemas import Triage
 from ..serializers import is_own, stage_name, ticket_ctx, to_front
@@ -54,8 +54,19 @@ def _open(s: Session) -> list[Ticket]:
     return s.query(Ticket).filter(Ticket.st < 7).all()
 
 
+PIPELINE_KEYS = ("visual", "damage")   # also written by the background pipeline (services/visuals.preview_later)
+
+
 def _set_data(t: Ticket, **kw) -> None:
-    t.data = {**(t.data or {}), **kw}  # reassign so SQLAlchemy sees the JSON change
+    """Update ticket.data. The background pipeline may have saved new images since this request loaded the ticket:
+    keep its latest visual / damage instead of the request's older copy, unless the request sets them itself."""
+    data = dict(t.data or {})
+    if inspect(t).persistent:
+        with SessionLocal() as s:
+            row = s.get(Ticket, t.ref)
+            latest = (row.data or {}) if row else {}
+        data.update({k: latest[k] for k in PIPELINE_KEYS if k in latest and k not in kw})
+    t.data = {**data, **kw}  # reassign so SQLAlchemy sees the JSON change
 
 
 def _zone(t: Ticket) -> dict | None:
