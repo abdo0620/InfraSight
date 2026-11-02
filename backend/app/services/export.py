@@ -25,7 +25,7 @@ from ..schemas import ZONE_COLORS
 INK, MUTED, LINE, PANEL = colors.HexColor("#1c1917"), colors.HexColor("#5f5853"), colors.HexColor("#e5dfd8"), colors.HexColor("#faf7f3")
 ACCENT, ACCENT_SOFT = colors.HexColor("#c2603f"), colors.HexColor("#fbeee8")
 GREEN, AMBER, RED = colors.HexColor("#15803d"), colors.HexColor("#b45309"), colors.HexColor("#b91c1c")
-LOGO = (colors.HexColor("#f0a07c"), colors.HexColor("#d97757"), colors.HexColor("#a8452a"))
+LOGO = colors.HexColor("#d97757")                      # the radar, same clay as the console
 W, H = A4
 MARGIN = 18 * mm
 
@@ -65,11 +65,24 @@ def P(text: str, style: str = "body") -> Paragraph:
 # ---------------------------------------------------------------------------------------------------------------
 
 def draw_logo(c, x: float, y: float, size: float = 14, word: bool = True, word_size: float = 15) -> None:
+    """The console logo (frontend/js/app.js LOGO): a radar over the street grid, drawn on a 64-unit grid."""
+    s = size / 64
+    pt = lambda gx, gy: (x + gx * s, y + (64 - gy) * s)
+    cx, cy = pt(32, 32)
     c.saveState()
-    p = c.beginPath()
-    p.roundRect(x, y, size, size, size * 0.33)
-    c.clipPath(p, stroke=0, fill=0)
-    c.linearGradient(x, y + size, x + size, y, LOGO, positions=(0, 0.6, 1), extend=False)
+    c.setStrokeColor(LOGO)
+    c.setFillColor(LOGO)
+    c.setStrokeAlpha(0.4)                 # two streets crossing under the radar
+    c.setLineWidth(3 * s)
+    c.line(*pt(8, 36), *pt(56, 36))
+    c.line(*pt(30, 6), *pt(34, 58))
+    c.setStrokeAlpha(1)
+    c.setLineWidth(4 * s)
+    c.circle(cx, cy, 27 * s, stroke=1, fill=0)
+    c.setFillAlpha(0.5)                   # the beam, from 12 o'clock to 2 o'clock
+    c.wedge(cx - 27 * s, cy - 27 * s, cx + 27 * s, cy + 27 * s, 30, 60, stroke=0, fill=1)
+    c.setFillAlpha(1)
+    c.circle(cx, cy, 4.5 * s, stroke=0, fill=1)
     c.restoreState()
     if word:
         c.setFont("Times-Bold", word_size)
