@@ -7,7 +7,7 @@ import io, logging, secrets
 from datetime import date
 from pathlib import Path
 from fastapi import HTTPException
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from ..config import settings
 from ..db import Audit, SessionLocal, Ticket
 from . import ai, images, vision
@@ -66,7 +66,8 @@ def set_zone(t: Ticket, photo: bytes, objects: list[dict] | None = None, box: li
     v = (t.data or {}).get("visual") or {}
     _drop(v.get("zone"))
     path = _save(t.ref, img, "zone")
-    t.data = {**(t.data or {}), "visual": {**v, "zone": path, "zone_from": "sam" if objects else "ai"}}
+    t.data = {**(t.data or {}), "visual": {**v, "zone": path, "zone_from": "sam" if objects else "ai",
+                                           "zone_box": None if objects else box}}
     return path
 
 
@@ -75,8 +76,47 @@ def draw_preview(t: Ticket) -> bytes:
     photo = read(t.image_path)
     if not photo:
         raise HTTPException(409, "This ticket has no photo")
-    zone = read(((t.data or {}).get("visual") or {}).get("zone"))
-    return images.normalize(ai.repair_preview(photo, zone, t.type, t.desc))
+    d = t.data or {}
+    v = d.get("visual") or {}
+    drawn = ai.repair_preview(photo, read(v.get("zone")), t.type, t.desc)
+    objects = (d.get("damage") or {}).get("objects")
+    box = v.get("zone_box") or (d.get("hint") or {}).get("box")
+    return images.normalize(repaired_only(photo, drawn, [o["polygon"] for o in objects] if objects else None, box))
+
+
+def repaired_only(photo: bytes, drawn: bytes, polygons: list | None, box: list[float] | None) -> bytes:
+    """Muse Image redraws the whole photo, and sometimes changes cars, signs or the light far from the damage. Keep
+    the real photo and take from the drawing only the damaged area (SAM outlines and/or the AI box, widened, with a
+    soft edge). Without an outline or a box, the drawing is used as it is."""
+    if not polygons and not box:
+        return drawn
+    im = Image.open(io.BytesIO(photo)).convert("RGB")
+    w, h = im.size
+    new = Image.open(io.BytesIO(drawn)).convert("RGB").resize((w, h), Image.LANCZOS)
+    mask = Image.new("L", (w, h), 0)
+    d = ImageDraw.Draw(mask)
+    # SAM outlines the hole itself; a real patch is cut wider, over the cracked rim: an ellipse 30% wider than each
+    # outline is taken from the drawing as well. Several outlines (broken slabs) are one repair: their whole span is
+    # taken, plus the AI box when there is one
+    boxes = [[min(x for x, _ in p), min(y for _, y in p), max(x for x, _ in p), max(y for _, y in p)]
+             for p in polygons or [] if len(p) >= 3]
+    if len(boxes) > 1:
+        boxes.append([min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes),
+                      max(b[3] for b in boxes)])
+    if box:
+        boxes.append(box)
+    for poly in polygons or []:
+        if len(poly) >= 3:
+            d.polygon([(x * w, y * h) for x, y in poly], fill=255)
+    for x1, y1, x2, y2 in boxes:
+        bw, bh = (x2 - x1) * 0.3, (y2 - y1) * 0.3
+        d.ellipse([(x1 - bw) * w, (y1 - bh) * h, (x2 + bw) * w, (y2 + bh) * h], fill=255)
+    grow = max(3, round(min(w, h) * 0.025))         # covers the edge of the hole and the fresh asphalt joint
+    mask = mask.filter(ImageFilter.GaussianBlur(grow)).point(lambda p: 255 if p > 8 else 0)  # widen
+    mask = mask.filter(ImageFilter.GaussianBlur(grow / 2))                                  # soft edge
+    out = io.BytesIO()
+    Image.composite(new, im, mask).save(out, "JPEG", quality=90)
+    return out.getvalue()
 
 
 def store_preview(t: Ticket, img: bytes) -> str:
