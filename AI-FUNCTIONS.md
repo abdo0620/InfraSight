@@ -120,7 +120,7 @@ calls an endpoint on the backend, and the endpoint calls one of the functions be
 - **Page:** a ticket's **Overview** tab, "Photo and description" panel (staff).
 - **Endpoint:** `POST /api/tickets/{ref}/damage`.
 - **Before the AI:** SAM 3.1 outlines the damage on the photo first ([vision.py](backend/app/services/vision.py)). It
-  runs on the Meta Model API (`sam-3.1`, $0.0025 per image), or on your own SAM server if `SAM_URL` is set. If SAM
+  runs on the Meta Model API (`sam-3.1`, $0.0025 per image). If SAM
   fails, the AI still measures the damage and gives its own box.
 - **Sends:** the photo, the damage type, and the SAM outline boxes when available.
 - **Gets back:** width, length, depth, area, which known references were used (kerb, manhole, road marking…), and a
@@ -213,6 +213,22 @@ calls an endpoint on the backend, and the endpoint calls one of the functions be
   - in the Acceptance stage as "Expected", next to the real after-repair photo;
   - in the downloaded report.
 
+### What the citizen sees: the live pipeline
+
+After "Send report", a panel shows the three models working in order, with a timer:
+
+1. **Muse Spark**: the triage result (title, type, severity, owner) as soon as the report is saved;
+2. **SAM 3.1**: "damage outlined in red" (or "the AI's box is used" if it found nothing);
+3. **Muse Image**: "here is your street once repaired (illustration)".
+
+The photo in the panel changes at each step: your photo → red outline → repaired street. Steps 2 and 3 run in the
+background (`preview_later` in [visuals.py](backend/app/services/visuals.py)); the panel asks for the ticket every
+1.5 s. SAM's result is saved as soon as it arrives (`visual.sam`), so it shows while Muse Image is still drawing.
+
+If a second citizen reports the same problem while the pipeline runs, both results are kept: the pipeline saves on a
+freshly loaded ticket, and requests keep the pipeline's latest `visual` / `damage` (`_set_data` in
+[tickets.py](backend/app/routers/tickets.py)).
+
 ### The red damage zone (not an AI call itself)
 
 [visuals.py](backend/app/services/visuals.py) draws the damaged area in translucent red on the citizen photo, with
@@ -222,8 +238,6 @@ Pillow. Where the area comes from:
    with Meta's `meta-sam-parser`, so no GPU is needed. It runs:
    - in the background after every citizen report, before the repair preview;
    - again with "Outline and measure the damage".
-
-   It uses your own SAM server instead if `SAM_URL` is set.
 2. Until SAM has answered, or if it fails, a **box from Muse Spark**:
    - `damage_box` in `triage`, so every report with a photo gets a red zone at once;
    - `box` in `estimate_size`, when the damage is analysed again.

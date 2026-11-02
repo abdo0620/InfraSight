@@ -1,5 +1,18 @@
 # InfraSight
 
+The AI co-pilot for city streets. A citizen photographs a problem in public space; InfraSight turns it into a mapped
+danger, a merged case, a red-outlined damage zone, a picture of the street after repair, a detour, a draft traffic
+order, the documents of each legal stage, and a message back to the citizen in their own language. Built on Meta's
+models: **Muse Spark**, **SAM 3.1** and **Muse Image**, all through the Meta Model API.
+
+## Built during the Meta Global AI Developer Hackathon
+Everything in this repository was written during the hackathon (first commit 29 Oct 2026, building period
+27 Oct - 4 Nov 2026): the citizen and staff console, the FastAPI backend, the 10 AI functions, the SAM 3.1 damage
+outline, the Muse Image repair preview, danger zones, duplicate merging, detours and traffic orders, hotspots and
+forecast, citizen updates in 9 languages, and the weekly brief. See [AI-FUNCTIONS.md](AI-FUNCTIONS.md) for every AI
+call and [META-MODELS.md](META-MODELS.md) for the models used and their cost.
+
+## Layout
 ```
 frontend/                  static console, no build step
   index.html  css/styles.css
@@ -7,6 +20,7 @@ frontend/                  static console, no build step
   js/mapview.js            YOUR Leaflet map (index.js) adapted: CityMap.init({role, tickets, zones, onPin, onZone})
   js/map.js                danger zone drawing (point / street / area), mini map in the ticket's Danger tab
   js/api.js                backend client: login token + one function per ticket action (no prompts)
+  js/config.js             backend address (empty = same server; set by the Pages deployment)
 backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created on first start)
   app/db.py                tables: users, tickets, audit_log, zones
   app/auth.py              passwords (scrypt), login tokens (JWT), role checks, signed photo links, AI rate limit
@@ -16,12 +30,12 @@ backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created
   app/routers/tickets.py   state, create (with AI triage), report, stage assist, checklist, advance, photo, zones
   app/routers/stats.py     GET /api/stats (staff)
   app/services/            ai.py (all prompts, Muse Spark calls), geo.py (OpenStreetMap: pin -> address,
-                           street shapes), routing.py (detours), vision.py (SAM client), notify.py (citizen
-                           updates), images.py, export.py (report HTML with the photo)
+                           street shapes), routing.py (detours), vision.py (SAM 3.1 outline), notify.py (citizen
+                           updates), images.py, export.py (report HTML with all images), visuals.py (red
+                           damage zone, Muse Image repair preview)
   app/routers/insights.py  hotspots + forecast, weekly brief, notifications
   app/seed.py              sample tickets and demo users (SEED_DEMO)
   app/cli.py               create staff accounts, change roles and passwords
-sam_server/                SAM 3.1 segmentation server (separate machine with a GPU)
 ```
 
 ## Run
@@ -35,13 +49,24 @@ uvicorn app.main:app --reload                                        # site: htt
 ```
 The backend serves the console too. Opening `frontend/index.html` as a file does not work.
 
-## AI model
-The AI is Muse Spark through the Meta Model API (`https://api.meta.ai/v1`, OpenAI-compatible, key from
-dev.meta.ai). Model names: `MODEL_QUICK` (triage) and `MODEL_DEFAULT` (report,
-stage assist); empty means `muse-spark-1.1`. Without a key, reports are still saved for manual triage.
+## Meta models
+All three run on Meta's servers through the Meta Model API (`https://api.meta.ai/v1`), with one key from dev.meta.ai
+(`META_API_KEY`). Nothing runs on a GPU locally.
 
-With `SEED_DEMO=true` and `DEMO_PASSWORD` set, an empty database gets the sample tickets and three users:
-`citizen`, `tech`, `elected` (password = `DEMO_PASSWORD`). Do not enable this in production.
+| Model | Used for | Setting |
+|---|---|---|
+| Muse Spark (`muse-spark-1.3` recommended) | triage, reports, stage documents, size estimate, repair check, traffic order, forecast, brief, citizen updates | `MODEL_QUICK` (triage, updates), `MODEL_DEFAULT` (the rest); empty = `muse-spark-1.1` |
+| SAM 3.1 (`sam-3.1`) | exact outline of the damage on the photo | none |
+| Muse Image (`muse-image-1.0`) | the street after repair, drawn from the citizen photo | `MODEL_IMAGE` |
+
+Without a key, reports are still saved for manual triage. Prices and what the hackathon credit buys:
+[META-MODELS.md](META-MODELS.md).
+
+With `SEED_DEMO=true` and `DEMO_PASSWORD` set, an empty database gets 4 sample tickets in Brest and three users:
+`citizen`, `tech`, `elected` (password = `DEMO_PASSWORD`). Do not enable this in production. The sample photos
+(`backend/app/demo_photos/`) are not real citizen photos: they were generated with Muse Image, then run once through
+the real pipeline (SAM 3.1 outline, Muse Image repair preview), so the demo shows every feature without AI calls at
+start. Every report needs a photo.
 
 ## Accounts and roles
 - Citizens sign up on the sign-in screen. They see full details of their own reports only; other reports appear on
@@ -55,8 +80,12 @@ With `SEED_DEMO=true` and `DEMO_PASSWORD` set, an empty database gets the sample
 ## AI
 The browser never sends a prompt. Prompts are in `backend/app/services/ai.py`; the endpoints are
 `POST /api/tickets` (triage), `POST /api/tickets/{ref}/report` and `POST /api/tickets/{ref}/stages/{i}/assist`.
-Invalid JSON answers are retried once. Each user gets `AI_CALLS_PER_HOUR` AI requests (default 30, in memory).
-If triage fails, the report is still saved for manual triage.
+Every call sends a system message (role, steps, definitions of type, severity, urgency and owner, output schema) and
+a user message with the data inside `<data>` tags, declared untrusted so citizen text cannot steer the model. Legal
+statements must cite their source from the regulatory notes in `regulations.py`, or be marked `[verify]`. JSON
+answers are validated against `schemas.py`; an invalid answer is retried once with the validation error. Each user
+gets `AI_CALLS_PER_HOUR` AI requests (default 30, in memory). If triage fails, the report is still saved for manual
+triage. Every AI call is described in [AI-FUNCTIONS.md](AI-FUNCTIONS.md).
 
 ## Danger zones
 The AI gives each zone a `shape`: `point` (small circle: broken streetlight, small pothole at the edge), `street` (the
@@ -69,8 +98,23 @@ are fetched again at each start. A map pin's default text is replaced by the rea
 - **Duplicate merging.** A new report within `DUPLICATE_RADIUS_M` (80 m) of an open ticket that the AI judges to be the
   same problem is added to that ticket: the citizen follows it, the photo goes in its history, severity can rise.
   Staff see possible duplicates on the ticket overview and can merge by hand (the duplicate is closed).
-- **Damage outline and size.** "Outline and measure the damage": SAM 3.1 (`SAM_URL`) outlines the damage on the photo,
-  then Muse Spark estimates its real size from visible references. Without SAM, only the AI estimate.
+- **Live AI pipeline.** After "Send report", the citizen watches the three Meta models work, step by step, with
+  timings: Muse Spark's triage (title, type, severity, owner), SAM 3.1's outline, then Muse Image's repaired street.
+  The photo in the panel changes at each step. SAM 3.1 and Muse Image run in the background on the server; the panel
+  polls the ticket until they finish, and each result is saved on a freshly loaded ticket so a duplicate merged
+  meanwhile is not overwritten.
+- **Damage zone.** Every report with a photo gets the damaged area drawn in red: first from the box Muse Spark gives
+  at triage, then from the exact SAM 3.1 outline, computed in the background. "Outline and measure the damage" redoes
+  it and has Muse Spark estimate the real size from visible references (kerb, road marking, manhole).
+- **Repair preview.** Muse Image draws the citizen's photo as it should look after the repair, from the photo and the
+  red-marked copy. Labelled everywhere as an illustration, not a photo. Staff can redraw it.
+- **Images everywhere.** Photo, damage zone, repair preview and after-repair photo appear on the ticket, the AI
+  report, the danger tab, the acceptance stage (before / expected / after), map popups and the downloaded report.
+  Muse Spark also receives the red-marked photo for the full report and the repair check.
+- **Incident report (PDF).** "Download PDF report" on the AI report tab (staff): an A4 PDF with the InfraSight logo, key
+  facts, the four images, damage size, danger, the AI assessment with cited sources, the 7 stages, repair check,
+  detour, history and the draft traffic order. Real selectable text, document language and title, a bookmark per
+  section (`services/export.py`, ReportLab). Not a fully tagged PDF/UA.
 - **Repair check.** At the last stage, staff add an after-repair photo; the AI compares it with the citizen's photo.
 - **Detour and traffic order.** For a street danger zone, "Plan a detour" downloads the roads around it (Overpass,
   `OVERPASS_URLS`, tried in order), computes the shortest legal route around the blocked section (one-way streets
@@ -80,11 +124,13 @@ are fetched again at each start. A map pin's default text is replaced by the rea
 - **Updates.** Citizens get a short message at each step, written by the AI in the language they chose (Updates page);
   without AI, a plain template. Staff get an AI weekly brief on the dashboard.
 
-## SAM server
-On a machine with an NVIDIA GPU: `cd sam_server && pip install -r requirements.txt && uvicorn server:app --host 0.0.0.0
---port 8100`, then `SAM_URL=http://<that machine>:8100` in `backend/.env`. The model (`SAM_MODEL`, default
-`facebook/sam3.1`, about 1.7 GB) downloads on first start; accept its licence on huggingface.co and `hf auth login`
-if asked. CPU works but takes tens of seconds per photo.
+## Deployment
+- **CI** (`.github/workflows/ci.yml`): installs the backend and smoke-tests login, tickets and stats on a temporary
+  database; checks the JavaScript syntax. No AI calls, no key needed.
+- **GitHub Pages** (`.github/workflows/deploy.yml`): publishes `frontend/`. Pages cannot run the Python backend: set
+  the repository variable `INFRASIGHT_API_URL` to a hosted backend (e.g. `https://example.com/api`) and allow the
+  Pages address in the backend's `CORS_ORIGINS`. Without it, the published page expects a backend on the visitor's
+  computer.
 
 ## To complete
 1. PostgreSQL + PostGIS (`DATABASE_URL`), Alembic migrations. Until then, new columns are added at start
