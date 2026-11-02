@@ -97,8 +97,15 @@ def one(ref: str, u: User = Depends(current_user), s: Session = Depends(get_db))
     return to_front(_visible(_get(s, ref), u), u)
 
 
+@router.get("/geocode")
+def geocode(q: str, u: User = Depends(current_user)):
+    """Address suggestions for the report form (OpenStreetMap). A report needs a place found on the map."""
+    q = q.strip()[:120]
+    return geo.search(q, settings.commune_name) if len(q) >= 4 else []
+
+
 @router.post("/tickets")
-async def create(bg: BackgroundTasks, addr: str = Form(..., min_length=1, max_length=200),
+async def create(bg: BackgroundTasks, addr: str = Form("Place on the map", max_length=200),
                  desc: str = Form(..., min_length=1, max_length=4000), lat: float | None = Form(None),
                  lng: float | None = Form(None), image: UploadFile = File(...),
                  u: User = Depends(ai_quota), s: Session = Depends(get_db)):
@@ -106,12 +113,11 @@ async def create(bg: BackgroundTasks, addr: str = Form(..., min_length=1, max_le
     same problem in an open ticket close by, the report is added to that ticket instead (duplicate merging)."""
     if not image.filename:
         raise HTTPException(422, "A photo of the problem is required")
+    if lat is None or lng is None or not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        raise HTTPException(422, "Choose the place: pin it on the map, or pick an address from the suggestions")
     img = images.normalize(await image.read())
-    road = None
-    if lat is not None and lng is not None:
-        found, road = await run_in_threadpool(geo.place, lat, lng)
-        if addr.startswith("Map pin"):  # default text of the map form
-            addr = found or addr
+    found, road = await run_in_threadpool(geo.place, lat, lng)
+    addr = found or addr                # the address of the place on the map, not free text
     near = sorted(((geo.distance((lat, lng), (o.lat, o.lng)) if lat is not None and o.lat is not None else None, o)
                    for o in _open(s)), key=lambda x: (x[0] is None, x[0] or 0))
     others = [f"{o.ref} {o.title}, {o.addr}" + (f" ({round(d)} m away)" if d is not None else "") for d, o in near[:20]]
@@ -248,6 +254,7 @@ def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
     try:
         objects = vision.outline(img, t.type, hint.get("label"), hint.get("box"))
         p.set("sam", "ok", f"{len(objects)} damaged area{'s' if len(objects) != 1 else ''} outlined"
+                           + (f" as “{objects[0]['label']}”" if objects[0].get("label") else "")
               if objects else "No clear outline: the AI locates it instead")
     except HTTPException as e:            # no outline: the AI still locates and measures the damage
         objects, err = None, e.detail
@@ -326,7 +333,7 @@ def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
     if z.get("shape") != "street" or not street:
         raise HTTPException(409, "A detour needs a street danger zone with its street shape")
     try:
-        d = routing.detour(street["lines"])
+        d = routing.detour(street["lines"], p)
     except RuntimeError as e:
         p.set("route", "err", str(e))
         raise HTTPException(502, str(e))

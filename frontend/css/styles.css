@@ -150,3 +150,5 @@ table.cards td[data-label]:not([data-label=""])::before{content:attr(data-label)
 .hb>div{grid-template-columns:90px 1fr 54px}
 body.auth main{min-height:100vh}
 }
+.sug{display:flex;flex-direction:column;gap:2px;margin-top:4px}.sug:empty{display:none}
+.sug-i{text-align:left;background:var(--p2);color:var(--tx);border:1px solid var(--ln);border-radius:8px;padding:9px 12px;font:inherit;cursor:pointer;min-height:44px}.sug-i:hover,.sug-i:focus-visible{border-color:var(--ac)}

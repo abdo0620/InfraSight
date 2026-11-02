@@ -53,6 +53,25 @@ def place(lat: float, lng: float) -> tuple[str | None, str | None]:
     return ", ".join(x for x in (street, _city(a)) if x) or None, road
 
 
+def search(q: str, near: str = "") -> list[dict]:
+    """Addresses matching what a citizen types, for the report form: [{"label", "lat", "lng"}], best first.
+    near: the commune (COMMUNE_NAME), added to the query so "12 rue de Siam" finds the local street first."""
+    try:
+        found = _get("search", q=f"{q}, {near}" if near and near.lower() not in q.lower() else q,
+                     countrycodes="fr", addressdetails=1, limit=5)
+    except Exception as e:
+        logging.warning("Address search failed for %r: %s", q, e)
+        return []
+    out = []
+    for x in found:
+        a = x.get("address", {})
+        road = a.get("road") or a.get("pedestrian") or a.get("square") or x.get("name")
+        street = " ".join(v for v in (a.get("house_number"), road) if v)
+        out.append({"label": ", ".join(v for v in (street, _city(a)) if v) or x.get("display_name", "")[:120],
+                    "lat": float(x["lat"]), "lng": float(x["lon"])})
+    return out
+
+
 def address(lat: float, lng: float) -> str | None:
     return place(lat, lng)[0]
 
