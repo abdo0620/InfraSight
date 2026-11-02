@@ -334,8 +334,8 @@ def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
         raise HTTPException(409, "A detour needs a street danger zone with its street shape")
     try:
         d = routing.detour(street["lines"], p)
-    except RuntimeError as e:
-        p.set("route", "err", str(e))
+    except RuntimeError as e:             # road servers busy, or no route around the section
+        p.set("roads" if isinstance(e, routing.RoadDataError) else "route", "err", str(e))
         raise HTTPException(502, str(e))
     order, err = None, None
     p.set("order", "run")

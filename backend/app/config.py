@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     token_hours: int = 12
     ai_calls_per_hour: int = 30        # per user, all AI features together
     overpass_urls: list[str] = ["https://overpass-api.de/api/interpreter",          # road network for detours,
-                                "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]  # tried in order
+                                "https://z.overpass-api.de/api/interpreter",        # tried in order (public servers,
+                                "https://overpass.kumi.systems/api/interpreter",    # often busy: see routing.py)
+                                "https://overpass.private.coffee/api/interpreter",
+                                "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
     duplicate_radius_m: int = 80       # a new report this close to an open ticket may be merged into it
     seed_demo: bool = False            # create the sample tickets on an empty database
     demo_password: str = ""            # if set with seed_demo, also create users citizen / tech / elected

@@ -1,7 +1,8 @@
 """Detour around a blocked street section, computed here from the OpenStreetMap road network (Overpass API):
 download the drivable roads around the section, drop the blocked pieces, shortest path between its two ends."""
-import heapq, json, logging, math, urllib.parse, urllib.request
+import hashlib, heapq, json, logging, math, time, urllib.parse, urllib.request
 from collections import defaultdict
+from pathlib import Path
 from ..config import settings
 from .geo import HEADERS, distance
 
@@ -11,17 +12,40 @@ MARGIN = 0.006                         # degrees around the section, about 450-6
 ON_STREET_M = 10                       # a road piece this close to the blocked lines (both ends) is blocked
 
 
-def _overpass(query: str) -> dict:
+class RoadDataError(RuntimeError):
+    """No Overpass server answered: the road network could not be downloaded."""
+
+
+CACHE_DAYS = 7                         # the road network of a street hardly changes: "Recalculate" reuses it
+
+
+def _overpass(query: str, say=lambda *a: None) -> dict:
+    """Public Overpass servers are often busy (504, 429) or slow (40 s for a small query): each one is tried in
+    turn, all of them twice with a pause if they were all busy, and an answer is kept on disk for a week."""
+    cache = Path(settings.upload_dir) / "overpass" / (hashlib.sha256(query.encode()).hexdigest()[:24] + ".json")
+    if cache.exists() and time.time() - cache.stat().st_mtime < CACHE_DAYS * 86400:
+        say("roads", "run", "Road network already downloaded for this street")
+        return json.loads(cache.read_text(encoding="utf-8"))
     last = None
-    for url in settings.overpass_urls:  # public servers are often busy: try each in turn
-        try:
-            req = urllib.request.Request(url, data=urllib.parse.urlencode({"data": query}).encode(), headers=HEADERS)
-            with urllib.request.urlopen(req, timeout=90) as r:
-                return json.load(r)
-        except Exception as e:
-            logging.warning("Overpass %s failed: %s", url, e)
-            last = e
-    raise RuntimeError(f"No road data service answered ({last}). Check OVERPASS_URLS in backend/.env.")
+    for attempt in range(2):
+        if attempt:
+            say("roads", "run", "All road data servers are busy: trying again")
+            time.sleep(4)
+        for url in settings.overpass_urls:
+            say("roads", "run", f"Asking {urllib.parse.urlparse(url).netloc} (busy servers can take a minute)")
+            try:
+                req = urllib.request.Request(url, data=urllib.parse.urlencode({"data": query}).encode(),
+                                             headers=HEADERS)
+                with urllib.request.urlopen(req, timeout=90) as r:
+                    data = json.load(r)
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                cache.write_text(json.dumps(data), encoding="utf-8")
+                return data
+            except Exception as e:
+                logging.warning("Overpass %s failed: %s", url, e)
+                last = e
+    raise RoadDataError(f"The OpenStreetMap road servers are busy ({last}). Try again in a few minutes; the server "
+                       f"list is OVERPASS_URLS in backend/.env.")
 
 
 def _seg_dist(p, a, b) -> float:
@@ -52,7 +76,7 @@ def detour(lines: list[list[list[float]]], progress=None) -> dict:
     s, w = min(p[0] for p in pts) - MARGIN, min(p[1] for p in pts) - MARGIN
     n, e = max(p[0] for p in pts) + MARGIN, max(p[1] for p in pts) + MARGIN
     data = _overpass(f'[out:json][timeout:60];way["highway"~"^({DRIVABLE})$"]["access"!~"^(no|private)$"]'
-                     f'({s:.6f},{w:.6f},{n:.6f},{e:.6f});out body geom;')
+                     f'({s:.6f},{w:.6f},{n:.6f},{e:.6f});out body geom;', say)
     n = len(data.get("elements", []))
     say("roads", "ok", f"{n} road segment{'s' if n != 1 else ''} around the section")
     say("route", "run")
