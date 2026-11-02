@@ -440,18 +440,35 @@ def repair_preview(photo: bytes, marked: bytes | None, kind: str, description: s
               "surface dried. Keep everything else pixel-faithful: framing, camera angle, perspective, lighting, "
               "weather, colours, surroundings, vehicles and objects. Output a photorealistic photo with no red marks, "
               "no text or watermark, and no added people or objects.")
-    files = [("photo.jpg", photo, "image/jpeg")] + ([("marked.jpg", marked, "image/jpeg")] if marked else [])
+    model = settings.model_image or IMAGE_MODEL
     try:
-        r = c.images.edit(model=settings.model_image or IMAGE_MODEL, prompt=prompt,
-                          image=files if marked else files[0], n=1)
+        if marked:
+            # Two images: the Meta API wants the form fields image[0], image[1]; the openai SDK sends image[] instead
+            # sent through the SDK's own HTTP client: same certificates and settings as every other call
+            resp = c._client.post(settings.meta_base_url.rstrip("/") + "/images/edits", timeout=180,
+                              headers={"Authorization": f"Bearer {settings.meta_api_key}"},
+                              data={"model": model, "prompt": prompt, "n": "1"},
+                              files=[("image[0]", ("photo.jpg", photo, "image/jpeg")),
+                                     ("image[1]", ("marked.jpg", marked, "image/jpeg"))])
+            if resp.status_code == 429:
+                raise HTTPException(429, "The image AI is busy. Wait a moment and try again.")
+            if resp.status_code >= 400:
+                logging.error("Muse Image call failed: %s %s", resp.status_code, resp.text[:500])
+                raise HTTPException(502, "The image AI could not answer. Try again.")
+            items = resp.json().get("data") or []
+            d = items[0] if items else {}
+            b64, url = d.get("b64_json"), d.get("url")
+        else:
+            r = c.images.edit(model=model, prompt=prompt, image=("photo.jpg", photo, "image/jpeg"), n=1)
+            d = r.data[0] if r.data else None
+            b64, url = (d.b64_json, d.url) if d is not None else (None, None)
     except openai.RateLimitError:
         raise HTTPException(429, "The image AI is busy. Wait a moment and try again.")
-    except openai.APIError as e:
+    except (openai.APIError, httpx.HTTPError, ValueError) as e:
         logging.exception("Muse Image call failed")
         raise HTTPException(502, "The image AI could not answer. Try again.") from e
-    d = r.data[0] if r.data else None
-    if d is not None and d.b64_json:
-        return base64.b64decode(d.b64_json)
-    if d is not None and d.url:
-        return httpx.get(d.url, timeout=60).content
+    if b64:
+        return base64.b64decode(b64)
+    if url:
+        return c._client.get(url, timeout=60).content
     raise HTTPException(502, "The image AI returned no image. Try again.")
