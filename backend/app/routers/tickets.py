@@ -200,8 +200,7 @@ def report(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
 
 @router.post("/tickets/{ref}/damage")
 def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
-    """SAM 3.1 outlines the damage on the photo (Meta Model API, or your own server with SAM_URL), then the AI
-    estimates its real size."""
+    """SAM 3.1 outlines the damage on the photo (Meta Model API), then the AI estimates its real size."""
     t = _get(s, ref)
     img = _photo(t)
     if not img:
@@ -216,7 +215,7 @@ def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
     except HTTPException as e:
         err = " ".join(x for x in (err, e.detail) if x)
     if objects is None and size is None:
-        raise HTTPException(503, f"Set SAM_URL or the AI key in backend/.env. {err}")
+        raise HTTPException(503, f"Set META_API_KEY in backend/.env. {err}")
     _set_data(t, damage={"objects": objects or [], "size": size, "sam": objects is not None})
     zone = visuals.set_zone(t, img, objects, (size or {}).get("box"))
     _log(t, u, "Damage analysed: " + (f"{len(objects)} area(s) outlined by SAM 3.1. " if objects is not None else "")

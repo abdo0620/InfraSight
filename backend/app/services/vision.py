@@ -1,9 +1,7 @@
-"""SAM 3.1 outlines the damage on a photo. Two ways to reach it:
-- the Meta Model API (model sam-3.1, POST /v1/responses), used when META_API_KEY is set and SAM_URL is empty: no GPU
-  needed, about $0.0025 per image (https://dev.meta.ai/docs/media-segmentation);
-- your own SAM server (sam_server/ in this project), when SAM_URL is set."""
+"""SAM 3.1 outlines the damage on a photo, through the Meta Model API (model sam-3.1, POST /v1/responses):
+runs on Meta's servers, about $0.0025 per image (https://dev.meta.ai/docs/media-segmentation)."""
 import asyncio, base64, io, logging, re
-import httpx, openai
+import openai
 from fastapi import HTTPException
 from meta_sam_parser import decode_mask_to_raster, decode_mask_to_svg_path, image_segmentation_format, parse_responses_stream
 from PIL import Image
@@ -18,24 +16,8 @@ MAX_OBJECTS = 5
 
 def outline(image: bytes, kind: str) -> list[dict] | None:
     """[{"score", "box": [x1, y1, x2, y2], "polygon": [[x, y], ...], "area"}], all as fractions of the photo size,
-    best first. None when SAM is not available (no SAM_URL and no META_API_KEY)."""
-    text = PROMPTS.get(kind, "damage")
-    if settings.sam_url:
-        return _own_server(image, text)
-    if settings.meta_api_key:
-        return _model_api(image, text)
-    return None
-
-
-def _own_server(image: bytes, text: str) -> list[dict]:
-    try:
-        r = httpx.post(settings.sam_url.rstrip("/") + "/segment", timeout=180,
-                       files={"image": ("photo.jpg", image, "image/jpeg")}, data={"text": text})
-        r.raise_for_status()
-        return r.json()["objects"]
-    except (httpx.HTTPError, KeyError, ValueError) as e:
-        logging.warning("SAM server failed: %s", e)
-        raise HTTPException(502, "The SAM server could not answer. Check SAM_URL in backend/.env.") from e
+    best first. None when there is no META_API_KEY."""
+    return _model_api(image, PROMPTS.get(kind, "damage")) if settings.meta_api_key else None
 
 
 async def _events(image: bytes, text: str):
