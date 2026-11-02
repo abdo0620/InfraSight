@@ -166,7 +166,12 @@ TRIAGE_SCHEMA = _schema(
     '"owner": "commune" | "department" | "state" | "epci" | "private" | "network",\n'
     '"summary": string, one factual sentence: what, where, why it matters,\n'
     '"duplicate_of": string or null, a ref copied exactly from the open tickets list,\n'
-    '"damage_box": [number, number, number, number] or null,\n' + CONSEQUENCES_SCHEMA)
+    '"damage_box": [number, number, number, number] or null,\n'
+    '"damage_label": string or null, for a segmentation model that finds things by what they are, not their '
+    'state: a plain 1-3 word noun phrase naming the damage when it is a thing of its own ("pothole", "crack", '
+    '"graffiti", "pile of rubbish", "puddle"), otherwise the damaged object ("bus shelter", "street lamp", '
+    '"paving slab", "fallen branch"); no adjectives such as damaged, broken or shattered; one concept, no "and"; '
+    'null when no damage is visible,\n' + CONSEQUENCES_SCHEMA)
 
 
 def triage(address: str, description: str, open_tickets: list[str], image: bytes | None) -> Triage:
@@ -182,7 +187,8 @@ def triage(address: str, description: str, open_tickets: list[str], image: bytes
         "3. Assess the consequences if nothing is done, and the danger zone.\n"
         "4. Duplicates: set duplicate_of only if an open ticket clearly describes the same problem (same type, same "
         "place, consistent description) and is listed less than 80 m away. Otherwise null.\n"
-        "5. Locate the damage on the photo (damage box).",
+        "5. Locate the damage on the photo (damage box) and name it (damage label): the damaged part only, not the "
+        "whole road, wall or object around it.",
         TYPES, SEVERITY, URGENCY, OWNERS, ZONE_RULES, BOX_RULE, JSON_RULES, TRIAGE_SCHEMA)
     user = _data(address=address, description=description, open_tickets_nearest_first=open_tickets)
     return _ask_model(system, user, image, "quick", Triage)

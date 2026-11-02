@@ -138,7 +138,8 @@ async def create(bg: BackgroundTasks, addr: str = Form(..., min_length=1, max_le
                    sev=x.severity if x else 3, urg=x.urgency if x else 3, due=2, cost_min=None, cost_max=None,
                    created=datetime.utcnow(), image_path=_save_photo(ref, img) if img else None,
                    data={"cons": x.consequences.model_dump() if x else None, "street_name": road,
-                         "zone": zone, "rep": None, "ai": {}, "ch": {}})
+                         "zone": zone, "rep": None, "ai": {}, "ch": {},
+                         "hint": {"label": x.damage_label, "box": x.damage_box} if x else None})
         _log(t, u, "Report received via the citizen portal")
         if img:
             _log(t, u, "Photo attached by the citizen", with_img=True)
@@ -239,8 +240,9 @@ def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
         raise HTTPException(409, "This ticket has no photo")
     size, err = None, None
     p.set("sam", "run")
+    hint = (t.data or {}).get("hint") or {}
     try:
-        objects = vision.outline(img, t.type)
+        objects = vision.outline(img, t.type, hint.get("label"), hint.get("box"))
         p.set("sam", "ok", f"{len(objects)} damaged area{'s' if len(objects) != 1 else ''} outlined"
               if objects else "No clear outline: the AI locates it instead")
     except HTTPException as e:            # no outline: the AI still locates and measures the damage

@@ -48,12 +48,11 @@ def overlay(photo: bytes, polygons: list[list[list[float]]] | None = None, box: 
             if len(pts) >= 3:
                 d.polygon(pts, fill=RED + (80,))
                 d.line(pts + pts[:1], fill=RED + (255,), width=width, joint="curve")
-    else:
-        x1, y1, x2, y2 = box
-        pad = 0.15                                   # the box is tight: draw the zone a little wider, as an ellipse
-        bw, bh = (x2 - x1) * pad, (y2 - y1) * pad
-        e = [max(0, (x1 - bw) * w), max(0, (y1 - bh) * h), min(w, (x2 + bw) * w), min(h, (y2 + bh) * h)]
-        d.ellipse(e, fill=RED + (70,), outline=RED + (255,), width=width)
+    else:                                            # no outline: the AI box as it is, a rounded rectangle (a padded
+        x1, y1, x2, y2 = box                         # ellipse covered sky and road around a large object)
+        e = [max(0, x1 * w), max(0, y1 * h), min(w, x2 * w), min(h, y2 * h)]
+        d.rounded_rectangle(e, radius=min(e[2] - e[0], e[3] - e[1]) * 0.12, fill=RED + (60,), outline=RED + (255,),
+                            width=width)
     out = io.BytesIO()
     Image.alpha_composite(im.convert("RGBA"), layer).convert("RGB").save(out, "JPEG", quality=85)
     return out.getvalue()
@@ -102,10 +101,10 @@ def preview_later(ref: str) -> None:
         t = s.get(Ticket, ref)
         if not t:
             return
-        photo, kind = read(t.image_path), t.type
+        photo, kind, hint = read(t.image_path), t.type, (t.data or {}).get("hint") or {}
     sam, objects = "none", None                       # what the live pipeline on the report page shows
     try:
-        objects = vision.outline(photo, kind) if photo else None
+        objects = vision.outline(photo, kind, hint.get("label"), hint.get("box")) if photo else None
         sam = "done" if objects else "none"
     except HTTPException as e:                        # keep the triage box
         logging.warning("SAM outline for %s not made: %s", ref, e.detail)

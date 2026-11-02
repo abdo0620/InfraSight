@@ -54,6 +54,7 @@ class Triage(BaseModel):
     consequences: Consequences
     danger_zone: DangerZone
     damage_box: Optional[list[float]] = None   # where the damage is on the photo, for the red zone
+    damage_label: Optional[str] = None         # what the damage is, in 1-3 words, for SAM ("cracked asphalt")
 
     _check_box = field_validator("damage_box", mode="before")(_box)
 
