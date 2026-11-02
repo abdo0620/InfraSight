@@ -365,19 +365,37 @@ function initMunicipalMap(opts) {
   window.zoomToIncident = function(id) {
     const found = activeIncidents.find(i => i.id === id);
     if (found && found.layer) {
+      if (cleared) clearBtn.click();   // picked from the list while the map is cleared: show the map again
       // opens the cluster that holds the incident first, then its popup
       markersCluster.zoomToShowLayer(found.layer, () => found.layer.openPopup());
     }
   };
 
+  // Clear hides everything drawn on the map (report dots, AI danger zones, hotspots, detours, drawn zones), and the
+  // same button shows it all again. It used to empty only the dot list: the zones and the clustered dots stayed.
+  // Saved data is never deleted; only the unsaved manual inspection dots go for good.
+  let cleared = false;
   clearBtn.addEventListener('click', () => {
-    markersCluster.clearLayers();
-    activePolygons.forEach(item => map.removeLayer(item.layer));
-    activeIncidents = [];
-    activePolygons = [];
-    zonePoints = [];
-    activeScoreFilter = null;
-    if (tempPolyline) map.removeLayer(tempPolyline);
+    cleared = !cleared;
+    const layers = [markersCluster, aiLayer, detourLayer, ...activePolygons.map(p => p.layer)];
+    if (cleared) {
+      activeIncidents = activeIncidents.filter(i => {
+        if (!i.isCitizen) markersCluster.removeLayer(i.layer);
+        return i.isCitizen;
+      });
+      zonePoints = [];
+      if (tempPolyline) map.removeLayer(tempPolyline);
+      map.closePopup();
+      layers.forEach(l => map.removeLayer(l));
+    } else {
+      layers.forEach(l => map.addLayer(l));
+    }
+    ['ai-zones', 'detours'].forEach(id => {
+      const b = document.getElementById(id);
+      if (b) b.classList.toggle('active', !cleared);
+    });
+    clearBtn.textContent = cleared ? 'Show all' : 'Clear';
+    clearBtn.setAttribute('aria-pressed', String(cleared));
     updateUI();
   });
   // Cancel the pending resize: running it on a removed map throws "_leaflet_pos" errors.
