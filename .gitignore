@@ -18,3 +18,6 @@ backend/.venv/
 backend/infrasight.db
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# demo video (large binary, share it outside Git)
+*.mp4
