@@ -73,9 +73,11 @@ class Regulatory(BaseModel):
 
 
 class Cost(BaseModel):
+    """The AI chooses lines (code, quantity, why); prices.apply fills in the rates, sources and totals."""
     min: float = 0
     max: float = 0
     basis: str = ""
+    lines: list[dict] = []
 
 
 class Action(BaseModel):

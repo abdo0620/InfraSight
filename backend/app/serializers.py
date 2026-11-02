@@ -65,6 +65,8 @@ def ticket_ctx(t: Ticket, others: list[Ticket]) -> dict:
             "audit": [{"d": a.d, "w": a.w, "e": a.e} for a in t.audit[-6:]],
             "report": {k: rep.get(k) for k in ("type", "severity", "authority")} if rep else None,
             "consequences": (rep or {}).get("consequences") or d.get("cons"),
+            "damage_measured": {k: v for k, v in ((d.get("damage") or {}).get("size") or {}).items() if k != "box"}
+                               or None,
             "has_photo": bool(t.image_path),
             "earlier_ai_outputs": [f"{stage_name(int(k))}: {v[:300]}" for k, v in (d.get("ai") or {}).items()],
             "other_open_tickets": [f"{o.ref} {o.title} {o.addr}" for o in others if o.ref != t.ref and o.st < 7]}

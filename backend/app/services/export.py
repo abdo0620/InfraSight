@@ -379,6 +379,18 @@ def report_pdf(t: dict, paths: dict) -> bytes:
         story += [Spacer(1, 4), P("Cost estimate", "h2"),
                   facts([("Range", f"EUR {k.get('min', 0):,.0f} to {k.get('max', 0):,.0f} excl. VAT"),
                          ("Basis", k.get("basis"))])]
+        if k.get("lines"):                  # priced from backend/app/prices.py, each line with its source
+            money = lambda a, b: f"{a:,.0f}" if a == b else f"{a:,.0f}–{b:,.0f}"
+            story += [Spacer(1, 3), box(
+                [[P("<b>Work item</b>", "cell"), P("<b>Quantity</b>", "cell"), P("<b>Rate EUR</b>", "cell"),
+                  P("<b>Total EUR</b>", "cell")]]
+                + [[P(f"{e(x.get('item'))}<br/><font size='7' color='#6b6b6b'>{e(x.get('why'))}"
+                      + "".join(f"<br/>Source: <link href='{e(s['url'])}' color='#2563eb'>{e(s['name'])}</link>"
+                                for s in x.get("sources") or []) + "</font>", "cell"),
+                    f"{x.get('quantity')} {x.get('unit')}",
+                    "to verify" if x.get("rate_min") is None else money(x["rate_min"], x["rate_max"]),
+                    money(x.get("total_min", 0), x.get("total_max", 0))] for x in k["lines"]],
+                [full * 0.58, full * 0.14, full * 0.13, full - full * 0.85], header=True)]
         if r.get("risks"):
             story += [Spacer(1, 4), P("Risks", "h2")] + bullets(r["risks"])
         if r.get("actions"):

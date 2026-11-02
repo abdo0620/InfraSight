@@ -7,9 +7,10 @@ import base64, json, logging, re
 import httpx, openai
 from fastapi import HTTPException
 from pydantic import BaseModel, ValidationError
+from .. import prices
 from ..config import settings
 from ..regulations import DIRECTORY, REG, STAGES
-from ..schemas import Forecast, RepairCheck, Report, SizeEstimate, Triage
+from ..schemas import Cost, Forecast, RepairCheck, Report, SizeEstimate, Triage
 
 # Muse Spark model when MODEL_QUICK / MODEL_DEFAULT are not set in .env; Muse Image for the repair preview
 DEFAULT_MODEL = "muse-spark-1.1"
@@ -209,7 +210,9 @@ REPORT_SCHEMA = _schema(
     '"ownership_assessment": string, who owns the land or asset and on what evidence,\n'
     '"regulatory": {"procurement": string with source, "authorizations": [string with source], '
     '"council_vote": boolean, "legal_notes": [string with source]},\n'
-    '"cost": {"min": number, "max": number, "basis": string},\n'
+    '"cost": {"lines": [{"code": string from PRICE CATALOGUE, "quantity": number in the unit of that code, '
+    '"why": string, how the quantity was derived, "item": string (unpriced only), "min": number, "max": number '
+    '(unpriced only, EUR)}]},\n'
     '"risks": [string], 2 to 4 items,\n'
     '"actions": [{"step": string, "owner": string (department or role), "deadline": string}], 3 to 6 items in order,\n'
     '"citizen_message": string, max 60 words, plain words, no jargon, no promises of dates,\n' + CONSEQUENCES_SCHEMA)
@@ -227,16 +230,23 @@ def full_report(ticket_ctx: dict, image: bytes | None, zone_image: bytes | None 
         "1. Re-assess type, severity and urgency from the photo and the ticket, with the definitions below.\n"
         "2. Decide ownership and the responsible authority. authority.primary must be one DIRECTORY entry, copied "
         "exactly.\n"
-        "3. Estimate the cost in EUR excluding VAT. cost.min <= cost.max. cost.basis states the quantities and unit "
-        "rates assumed and ends with \"[verify]\".\n"
+        "3. Cost: list the work items from the PRICE CATALOGUE with their quantities; the amounts are computed from "
+        "the catalogue rates afterwards, so give no prices for catalogue items. Take areas from damage_measured "
+        "(area_m2, depth_cm) when present, otherwise estimate them from the photo and say so in why. A road repair "
+        "usually needs a temporary patch only if it cannot be repaired quickly, the final repair (planing first "
+        "when the surface is broken over more than 3 cm), and temporary signage (set up, plus upkeep days). Use "
+        "\"unpriced\" with your own min and max only for work the catalogue does not cover.\n"
         "4. Set council_vote from the REGULATORY NOTES (purchase order within delegations vs council deliberation), "
         "and choose the procurement route from the thresholds for that cost.\n"
         "5. List the authorizations needed before works (with sources), the main risks, and the ordered actions.\n"
         "6. Assess the consequences if nothing is done and the danger zone.\n"
         "7. Write the message to the citizen.",
         photos, TYPES, SEVERITY, ZONE_RULES, JSON_RULES, REPORT_SCHEMA)
-    user = _data(regulatory_notes=REG, directory=[d["n"] for d in DIRECTORY], ticket=ticket_ctx)
-    return _ask_model(system, user, [image, zone_image] if image and zone_image else image, "default", Report)
+    user = _data(regulatory_notes=REG, directory=[d["n"] for d in DIRECTORY], price_catalogue=prices.catalogue(),
+                 ticket=ticket_ctx)
+    r = _ask_model(system, user, [image, zone_image] if image and zone_image else image, "default", Report)
+    r.cost = Cost.model_validate(prices.apply(r.cost.model_dump(), ticket_ctx.get("damage_measured")))
+    return r
 
 
 # ---------------------------------------------------------------------------------------------------------------

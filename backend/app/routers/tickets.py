@@ -218,7 +218,11 @@ def report(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
                                              "regulatory notes") if x)
     with p.step("spark") as st:
         r = ai.full_report(ctx, photo, zone).model_dump()
-        st["detail"] = f"Severity {r['severity']}/5 · {r['authority']['primary'] or 'authority not stated'}"
+        st["detail"] = (f"Severity {r['severity']}/5 · {r['authority']['primary'] or 'authority not stated'}"
+                        f" · €{r['cost']['min']:,.0f}–{r['cost']['max']:,.0f} from {len(r['cost']['lines'])} priced "
+                        f"line(s)")
+    if r["cost"]["lines"]:                # the ticket's estimate (lists, budget, stage drafts) follows the report
+        t.cost_min, t.cost_max = r["cost"]["min"], r["cost"]["max"]
     with p.step("osm") as st:
         r["danger_zone"] = geo.shape_zone(r["danger_zone"], t.lat, t.lng)
         zs = r["danger_zone"] or {}
