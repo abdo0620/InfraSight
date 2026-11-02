@@ -3,7 +3,7 @@ from datetime import date, datetime
 from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -346,12 +346,15 @@ def apply_severity(ref: str, u: User = Depends(staff), s: Session = Depends(get_
     return to_front(t, u)
 
 
-@router.get("/tickets/{ref}/report.html", response_class=HTMLResponse)
-def report_html(ref: str, u: User = Depends(staff), s: Session = Depends(get_db)):
+@router.get("/tickets/{ref}/report.pdf")
+def report_pdf(ref: str, u: User = Depends(staff), s: Session = Depends(get_db)):
+    """The incident report as an A4 PDF with all the images (services/export.py)."""
     t = _get(s, ref)
     v, after = (t.data or {}).get("visual") or {}, (t.data or {}).get("after") or {}
-    return export.report_html(to_front(t, u), {"photo": t.image_path, "zone": v.get("zone"),
-                                               "preview": v.get("preview"), "after": after.get("path")})   # TODO: PDF (WeasyPrint)
+    pdf = export.report_pdf(to_front(t, u), {"photo": t.image_path, "zone": v.get("zone"),
+                                             "preview": v.get("preview"), "after": after.get("path")})
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="InfraSight-{t.ref}-report.pdf"'})
 
 
 @router.put("/zones")

@@ -32,7 +32,7 @@ assist:(ref,i)=>call("POST",`/tickets/${ref}/stages/${i}/assist`).then(fix),
 check:(ref,stage,item,done)=>call("PUT",`/tickets/${ref}/checklist`,{stage,item,done}).then(fix),
 advance:ref=>call("POST",`/tickets/${ref}/advance`).then(fix),
 applySev:ref=>call("POST",`/tickets/${ref}/apply-severity`).then(fix),
-reportHtml:ref=>call("GET",`/tickets/${ref}/report.html`),
+reportPdf:async ref=>{let r;try{r=await fetch(API+`/tickets/${ref}/report.pdf`,{headers:token?{Authorization:"Bearer "+token}:{}})}catch(e){throw{status:0,message:"The InfraSight server cannot be reached."}}if(!r.ok)throw{status:r.status,message:"The report could not be created ("+r.status+")"};return r.blob()},
 saveZones:z=>call("PUT","/zones",z),
 merge:(ref,into)=>call("POST",`/tickets/${ref}/merge`,{into}).then(fix),
 damage:ref=>call("POST",`/tickets/${ref}/damage`).then(fix),
@@ -46,5 +46,5 @@ brief:()=>call("GET","/brief"),
 makeBrief:()=>call("POST","/brief"),
 notes:()=>call("GET","/notifications"),
 readNotes:()=>call("POST","/notifications/read"),
-download:(filename,data)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"text/html"}));a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}};
+download:(filename,data,type="application/pdf")=>{const a=document.createElement("a");a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data],{type}));a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}};
 })();
