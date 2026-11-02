@@ -7,6 +7,7 @@ from ..auth import ai_quota, current_user, staff, user_label
 from ..db import Insight, Notification, Ticket, User, get_db
 from ..regulations import DECISION_STAGE
 from ..services import ai
+from ..services.progress import Progress, progress_of
 
 router = APIRouter(prefix="/api", tags=["insights"])
 
@@ -49,9 +50,14 @@ def get_hotspots(_u: User = Depends(staff), s: Session = Depends(get_db)):
 
 
 @router.post("/hotspots/forecast")
-def make_forecast(u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
-    hs = [{k: v for k, v in h.items() if k not in ("lat", "lng", "refs")} for h in hotspots(s)[:10]]
-    f = ai.forecast(hs, date.today().strftime("%B %Y")).model_dump()
+def make_forecast(u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db),
+                  p: Progress = Depends(progress_of)):
+    with p.step("hot") as st:
+        hs = [{k: v for k, v in h.items() if k not in ("lat", "lng", "refs")} for h in hotspots(s)[:10]]
+        st["detail"] = f"{len(hs)} street{'s' if len(hs) != 1 else ''} with repeated problems"
+    with p.step("spark") as st:
+        f = ai.forecast(hs, date.today().strftime("%B %Y")).model_dump()
+        st["detail"] = f"{len(f['hotspots'])} street{'s' if len(f['hotspots']) != 1 else ''} assessed"
     s.add(Insight(kind="forecast", by=user_label(u), data=f))
     s.commit()
     return {"hotspots": hotspots(s), "forecast": _latest(s, "forecast")}
@@ -84,9 +90,15 @@ def get_brief(_u: User = Depends(staff), s: Session = Depends(get_db)):
 
 
 @router.post("/brief")
-def make_brief(u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
-    facts = week_facts(s)
-    s.add(Insight(kind="weekly", by=user_label(u), data={"text": ai.weekly_brief(facts), "facts": facts}))
+def make_brief(u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db),
+               p: Progress = Depends(progress_of)):
+    with p.step("facts") as st:
+        facts = week_facts(s)
+        st["detail"] = f"{facts['new_reports']} new report(s), {facts['open_total']} open"
+    with p.step("spark") as st:
+        text = ai.weekly_brief(facts)
+        st["detail"] = f"{len(text.split())} words for the elected officials"
+    s.add(Insight(kind="weekly", by=user_label(u), data={"text": text, "facts": facts}))
     s.commit()
     return {"brief": _latest(s, "weekly"), "facts": facts}
 

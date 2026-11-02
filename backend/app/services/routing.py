@@ -43,13 +43,19 @@ def _ends(lines):
     return max(((a, b) for i, a in enumerate(ends) for b in ends[i + 1:]), key=lambda ab: distance(*ab))
 
 
-def detour(lines: list[list[list[float]]]) -> dict:
-    """{"lines": [[[lat, lng], ...]], "length_m", "streets": [names in driving order], "from", "to"}."""
+def detour(lines: list[list[list[float]]], progress=None) -> dict:
+    """{"lines": [[[lat, lng], ...]], "length_m", "streets": [names in driving order], "from", "to"}.
+    progress: services.progress.Progress, told when the road network is in and when the route is found."""
+    say = progress.set if progress else (lambda *a: None)
+    say("roads", "run")
     pts = [p for l in lines for p in l]
     s, w = min(p[0] for p in pts) - MARGIN, min(p[1] for p in pts) - MARGIN
     n, e = max(p[0] for p in pts) + MARGIN, max(p[1] for p in pts) + MARGIN
     data = _overpass(f'[out:json][timeout:60];way["highway"~"^({DRIVABLE})$"]["access"!~"^(no|private)$"]'
                      f'({s:.6f},{w:.6f},{n:.6f},{e:.6f});out body geom;')
+    n = len(data.get("elements", []))
+    say("roads", "ok", f"{n} road segment{'s' if n != 1 else ''} around the section")
+    say("route", "run")
     coord, graph = {}, defaultdict(list)
     for way in data.get("elements", []):
         if way.get("type") != "way" or "geometry" not in way:
@@ -84,8 +90,9 @@ def detour(lines: list[list[list[float]]]) -> dict:
             streets.append(name)
     nodes = [nid for nid, _ in path]
     line = [list(coord[k]) for k in nodes]
-    return {"lines": [line], "length_m": round(sum(distance(line[i], line[i + 1]) for i in range(len(line) - 1))),
-            "streets": streets, "from": line[0], "to": line[-1]}
+    length = round(sum(distance(line[i], line[i + 1]) for i in range(len(line) - 1)))
+    say("route", "ok", f"{length} m via {len(streets)} street{'s' if len(streets) != 1 else ''}")
+    return {"lines": [line], "length_m": length, "streets": streets, "from": line[0], "to": line[-1]}
 
 
 def _shortest(graph, src, dst):

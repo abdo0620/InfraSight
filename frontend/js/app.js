@@ -67,10 +67,10 @@ function repHTML(r,t){const a=r.authority||{},g=r.regulatory||{},c=r.cost||{},L=
 return `${t?visualsHTML(t):""}<div class="grid g2"><div class="panel"><h2>Classification</h2><p><b>Type:</b> ${esc(r.type)}</p><p><b>Severity:</b> ${sevP(+r.severity||3)} ${esc(r.severity_reason)}</p><p><b>Urgency:</b> ${esc(r.urgency)}. Response: ${esc(r.response_time)}</p><p><b>Ownership:</b> ${esc(r.ownership_assessment)}</p></div><div class="panel"><h2>Who to contact</h2><p><b>${esc(a.primary)}</b></p><p>Also: ${esc((a.secondary||[]).join("; "))}</p><p class="mu">${esc(a.contact_reason)}</p></div><div class="panel"><h2>Regulatory path</h2><p><b>Procurement:</b> ${esc(g.procurement)}</p><p><b>Council vote:</b> ${g.council_vote?"Required":"Not required"}</p><p><b>Authorizations</b></p>${L(g.authorizations)}<p><b>Legal notes</b></p>${L(g.legal_notes)}</div><div class="panel"><h2>Cost and risks</h2><p><b>Estimate:</b> €${esc(c.min)}–${esc(c.max)} <span class="mu">${esc(c.basis)}</span></p><p><b>Risks</b></p>${L(r.risks)}</div><div class="panel">${consHTML(r.consequences)}</div></div><div class="panel" style="margin-top:12px"><h2>Recommended actions</h2><div class="sw"><table><thead><tr><th>Action</th><th>Owner</th><th>Deadline</th></tr></thead><tbody>${(r.actions||[]).map(x=>`<tr><td>${esc(x.step)}</td><td>${esc(x.owner)}</td><td>${esc(x.deadline)}</td></tr>`).join("")}</tbody></table></div><p class="lb">Message to the citizen</p><p>${esc(r.citizen_message)}</p></div><p class="foot">AI-generated. A technician or elected official must review it before acting.</p>`}
 const upd=n=>{const i=T.findIndex(x=>x.ref==n.ref);if(i<0)T.unshift(n);else T[i]=n;return n};
 async function act(f,msg){try{upd(await f());if(msg)toast(msg)}catch(e){toast(e.message)}draw()}
-async function genReport(id){const t=byId(id);t.busy=1;t.err="";draw();try{upd(await CF.report(t.ref))}catch(e){t.busy=0;t.err=e.message}draw()}
+async function genReport(id){const t=byId(id);t.busy=1;t.err="";draw();try{upd(await aiTask("report",job=>CF.report(t.ref,job)))}catch(e){t.busy=0;t.err=e.message}draw()}
 async function dl(id){const t=byId(id);toast("Preparing the PDF report…");try{CF.download("InfraSight-"+t.ref+"-report.pdf",await CF.reportPdf(t.ref));toast("Report saved")}catch(e){toast(e.message)}}
 function applySev(id){const t=byId(id);act(()=>CF.applySev(t.ref),"Severity updated")}
-async function assist(id,i){const t=byId(id),o=$("ao"+i);o.textContent="Thinking…";try{upd(await CF.assist(t.ref,i));draw()}catch(e){const x=$("ao"+i);if(x)x.textContent=e.message}}
+async function assist(id,i){const t=byId(id),o=$("ao"+i);o.textContent="Thinking…";try{upd(await aiTask("assist",job=>CF.assist(t.ref,i,job)));draw()}catch(e){const x=$("ao"+i);if(x)x.textContent=e.message}}
 function chk(id,i,k,v){const t=byId(id);act(()=>CF.check(t.ref,i,k,v))}
 async function adv(id){const t=byId(id);try{const n=upd(await CF.advance(t.ref));toast(n.st>6?"Ticket closed and citizen informed":"Moved to "+stN(n));tab="pl"}catch(e){toast(e.message)}draw()}
 async function submitNew(){const f=$("nf").files[0],a=$("na").value.trim(),d=$("nd").value.trim(),b=$("nb"),r=$("nr");if(!f){toast("Add a photo of the problem: reports need one");return}if(!a||!d){toast("Add an address and a description");return}
@@ -182,12 +182,12 @@ async function loadNotes(){try{NOTES=await CF.notes();draw()}catch(e){}}
 async function loadHS(){try{HS=await CF.hotspots();draw()}catch(e){}}
 async function loadBrief(){try{BR=await CF.brief();draw()}catch(e){}}
 async function setLang(l){try{ME=await CF.setLang(l);toast("Your next updates will be in "+LANGS[l])}catch(e){toast(e.message)}}
-async function makeForecast(){FBUSY=1;draw();try{HS=await CF.forecast()}catch(e){toast(e.message)}FBUSY=0;draw()}
-async function makeBrief(){BBUSY=1;draw();try{BR=await CF.makeBrief()}catch(e){toast(e.message)}BBUSY=0;draw()}
+async function makeForecast(){FBUSY=1;draw();try{HS=await aiTask("forecast",job=>CF.forecast(job))}catch(e){toast(e.message)}FBUSY=0;draw()}
+async function makeBrief(){BBUSY=1;draw();try{BR=await aiTask("brief",job=>CF.makeBrief(job))}catch(e){toast(e.message)}BBUSY=0;draw()}
 async function busyAct(t,flag,f){t[flag]=1;draw();try{const n=upd(await f());if(n.ai_error)toast(n.ai_error)}catch(e){t[flag]=0;toast(e.message)}draw()}
-function analyseDamage(id){const t=byId(id);busyAct(t,"dmbusy",()=>CF.damage(t.ref))}
-function planDetour(id){const t=byId(id);busyAct(t,"dtbusy",()=>CF.detour(t.ref))}
-function afterPhoto(id){const t=byId(id),f=$("afp").files[0];if(!f){toast("Choose the after-repair photo first");return}busyAct(t,"afbusy",()=>CF.afterPhoto(t.ref,f))}
+function analyseDamage(id){const t=byId(id);busyAct(t,"dmbusy",()=>aiTask("damage",job=>CF.damage(t.ref,job)))}
+function planDetour(id){const t=byId(id);busyAct(t,"dtbusy",()=>aiTask("detour",job=>CF.detour(t.ref,job)))}
+function afterPhoto(id){const t=byId(id),f=$("afp").files[0];if(!f){toast("Choose the after-repair photo first");return}busyAct(t,"afbusy",()=>aiTask("after",job=>CF.afterPhoto(t.ref,f,job)))}
 async function mergeInto(id,ref){const t=byId(id);if(!confirm(`Merge ${t.ref} into ${ref}? ${t.ref} will be closed.`))return;try{const n=await CF.merge(t.ref,ref),j=await CF.state();T.length=0;j.tickets.forEach(x=>T.push(x));toast(t.ref+" merged into "+ref);go("ticket-"+n.id)}catch(e){fail(e)}}
 function signOut(){CF.logout();history.replaceState(null,"",location.pathname);location.reload()}
 async function start(){const m=$("main");if(location.protocol=="file:"){m.innerHTML='<h1>InfraSight</h1><div class="panel" style="margin-top:12px"><p>This page cannot be opened as a file.</p><p class="mu">Run start.bat in the project folder, then open http://localhost:8000</p></div>';return}m.innerHTML='<p class="mu">Loading…</p>';

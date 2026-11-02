@@ -13,7 +13,8 @@ from ..db import Audit, SessionLocal, Ticket, User, Zone, get_db
 from ..regulations import DECISION_STAGE, OWNERS, STAGES
 from ..schemas import Triage
 from ..serializers import is_own, stage_name, ticket_ctx, to_front
-from ..services import ai, export, geo, images, routing, vision, visuals
+from ..services import ai, export, geo, images, progress, routing, vision, visuals
+from ..services.progress import Progress, progress_of
 from ..services.notify import citizens, notify
 
 router = APIRouter(prefix="/api", tags=["tickets"])
@@ -83,6 +84,12 @@ def state(u: User = Depends(current_user), s: Session = Depends(get_db)):
     """Everything the console needs at startup, filtered for this user."""
     zones = [{"id": z.id, "name": z.name, "level": z.level, "points": z.points, "source": z.source} for z in s.query(Zone)]
     return {"tickets": [to_front(t, u) for t in s.query(Ticket).order_by(Ticket.created.desc())], "zones": zones}
+
+
+@router.get("/progress/{job}")
+def get_progress(job: str, _u: User = Depends(current_user)):
+    """Steps of an AI action still running (services/progress.py)."""
+    return progress.get(job)
 
 
 @router.get("/tickets/{ref}")
@@ -199,12 +206,23 @@ def file(name: str, exp: int, sig: str):
 
 
 @router.post("/tickets/{ref}/report")
-def report(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
+def report(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db),
+           p: Progress = Depends(progress_of)):
     """Full AI report (photo included)."""
     t = _get(s, ref)
-    zone = visuals.read(((t.data or {}).get("visual") or {}).get("zone"))
-    r = ai.full_report(ticket_ctx(t, _open(s)), _photo(t), zone).model_dump()
-    r["danger_zone"] = geo.shape_zone(r["danger_zone"], t.lat, t.lng)
+    with p.step("ctx") as st:
+        zone = visuals.read(((t.data or {}).get("visual") or {}).get("zone"))
+        ctx, photo = ticket_ctx(t, _open(s)), _photo(t)
+        st["detail"] = ", ".join(x for x in ("ticket and history", "photo" if photo else "", "red zone" if zone else "",
+                                             "regulatory notes") if x)
+    with p.step("spark") as st:
+        r = ai.full_report(ctx, photo, zone).model_dump()
+        st["detail"] = f"Severity {r['severity']}/5 · {r['authority']['primary'] or 'authority not stated'}"
+    with p.step("osm") as st:
+        r["danger_zone"] = geo.shape_zone(r["danger_zone"], t.lat, t.lng)
+        zs = r["danger_zone"] or {}
+        st["detail"] = (f"Along {(zs.get('street') or {}).get('name') or 'the street'}" if zs.get("shape") == "street"
+                        else f"{zs.get('shape', 'point').capitalize()}, radius about {zs.get('radius_m', '?')} m")
     _set_data(t, rep=r)
     _log(t, u, f"Full report generated: severity {r['severity']}, contact {r['authority']['primary'] or 'n/a'}", by_ai=True)
     s.commit()
@@ -212,67 +230,89 @@ def report(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
 
 
 @router.post("/tickets/{ref}/damage")
-def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
+def damage(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db),
+           p: Progress = Depends(progress_of)):
     """SAM 3.1 outlines the damage on the photo (Meta Model API), then the AI estimates its real size."""
     t = _get(s, ref)
     img = _photo(t)
     if not img:
         raise HTTPException(409, "This ticket has no photo")
     size, err = None, None
+    p.set("sam", "run")
     try:
         objects = vision.outline(img, t.type)
+        p.set("sam", "ok", f"{len(objects)} damaged area{'s' if len(objects) != 1 else ''} outlined"
+              if objects else "No clear outline: the AI locates it instead")
     except HTTPException as e:            # no outline: the AI still locates and measures the damage
         objects, err = None, e.detail
+        p.set("sam", "err", e.detail)
+    p.set("size", "run")
     try:
         size = ai.estimate_size(img, t.type, objects).model_dump()
+        p.set("size", "ok", f"About {size['width_m']} × {size['length_m']} m, {size['confidence']} confidence")
     except HTTPException as e:
         err = " ".join(x for x in (err, e.detail) if x)
+        p.set("size", "err", e.detail)
     if objects is None and size is None:
         raise HTTPException(503, f"Set META_API_KEY in backend/.env. {err}")
     _set_data(t, damage={"objects": objects or [], "size": size, "sam": objects is not None})
-    zone = visuals.set_zone(t, img, objects, (size or {}).get("box"))
+    with p.step("zone") as st:
+        zone = visuals.set_zone(t, img, objects, (size or {}).get("box"))
+        st["detail"] = "Red zone drawn on the photo" if zone else "Nothing to draw"
     _log(t, u, "Damage analysed: " + (f"{len(objects)} area(s) outlined by SAM 3.1. " if objects is not None else "")
          + (f"About {size['width_m']} × {size['length_m']} m ({size['confidence']} confidence)" if size else ""),
          by_ai=True, image_path=zone)
+    p.set("image", "run")
     try:
         _log(t, u, "Repair preview drawn (illustration)", by_ai=True, image_path=visuals.make_preview(t))
+        p.set("image", "ok", "Street drawn repaired (illustration)")
     except HTTPException as e:
         err = " ".join(x for x in (err, f"Repair preview: {e.detail}") if x)
+        p.set("image", "err", e.detail)
     s.commit()
     return to_front(t, u) | {"ai_error": err}
 
 
 @router.post("/tickets/{ref}/preview")
-def preview(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
+def preview(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db),
+            p: Progress = Depends(progress_of)):
     """New repair preview (Muse Image) from the photo and the current damage zone."""
     t = _get(s, ref)
-    _log(t, u, "Repair preview drawn again (illustration)", by_ai=True, image_path=visuals.make_preview(t))
+    with p.step("image") as st:
+        _log(t, u, "Repair preview drawn again (illustration)", by_ai=True, image_path=visuals.make_preview(t))
+        st["detail"] = "Street drawn repaired (illustration)"
     s.commit()
     return to_front(t, u)
 
 
 @router.post("/tickets/{ref}/after-photo")
 async def after_photo(ref: str, image: UploadFile = File(...), u: User = Depends(staff),
-                      _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
+                      _q: User = Depends(ai_quota), s: Session = Depends(get_db), p: Progress = Depends(progress_of)):
     """After-repair photo at closing time; the AI compares it with the citizen's photo."""
     t = _get(s, ref)
-    img = images.normalize(await image.read())
+    with p.step("photo") as st:
+        img = images.normalize(await image.read())
+        st["detail"] = "Photo checked and stored"
     path = _save_photo(t.ref, img, "-after-" + secrets.token_hex(3))
     _log(t, u, "After-repair photo added", image_path=path)
     check, err = None, None
+    p.set("spark", "run")
     try:
         zone = visuals.read(((t.data or {}).get("visual") or {}).get("zone"))
         check = (await run_in_threadpool(ai.check_repair, zone or _photo(t), img, _brief(t), bool(zone))).model_dump()
         _log(t, u, f"Repair check: {check['verdict'].replace('_', ' ')}. {check['explanation']}", by_ai=True)
+        p.set("spark", "ok", f"Verdict: {check['verdict'].replace('_', ' ')}")
     except HTTPException as e:
         err = e.detail
+        p.set("spark", "err", e.detail)
     _set_data(t, after={"path": path, "check": check})
     s.commit()
     return to_front(t, u) | {"ai_error": err}
 
 
 @router.post("/tickets/{ref}/detour")
-def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
+def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db),
+           p: Progress = Depends(progress_of)):
     """Detour around a blocked street (OpenStreetMap road network), then the AI drafts the mayor's traffic order."""
     t = _get(s, ref)
     z = _zone(t) or {}
@@ -282,13 +322,17 @@ def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
     try:
         d = routing.detour(street["lines"])
     except RuntimeError as e:
+        p.set("route", "err", str(e))
         raise HTTPException(502, str(e))
     order, err = None, None
+    p.set("order", "run")
     try:
         order = ai.traffic_order(_brief(t), street.get("name") or t.addr, z.get("radius_m") or 0, d["streets"],
                                  settings.commune_name)
+        p.set("order", "ok", "Draft traffic order written in French")
     except HTTPException as e:
         err = e.detail
+        p.set("order", "err", e.detail)
     _set_data(t, detour={**d, "order": order})
     _log(t, u, f"Detour computed: {d['length_m']} m via {', '.join(d['streets']) or 'local roads'}"
                + (". Traffic order drafted" if order else ""), by_ai=bool(order))
@@ -309,11 +353,17 @@ def remove_detour(ref: str, u: User = Depends(staff), s: Session = Depends(get_d
 
 
 @router.post("/tickets/{ref}/stages/{stage}/assist")
-def assist(ref: str, stage: int, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db)):
+def assist(ref: str, stage: int, u: User = Depends(staff), _q: User = Depends(ai_quota), s: Session = Depends(get_db),
+           p: Progress = Depends(progress_of)):
     t = _get(s, ref)
     if stage != t.st:
         raise HTTPException(409, "AI assist is only available for the current stage")
-    text = ai.stage_assist(stage, ticket_ctx(t, _open(s)), _photo(t))
+    with p.step("ctx") as st:
+        ctx, photo = ticket_ctx(t, _open(s)), _photo(t)
+        st["detail"] = f"Stage {stage + 1}: {stage_name(stage)}, {len(ctx['earlier_ai_outputs'])} earlier draft(s)"
+    with p.step("spark") as st:
+        text = ai.stage_assist(stage, ctx, photo)
+        st["detail"] = f"{len(text.split())} words drafted"
     _set_data(t, ai={**(t.data or {}).get("ai", {}), str(stage): text})
     _log(t, u, f"AI draft for stage: {stage_name(stage)}", by_ai=True)
     s.commit()

@@ -7,10 +7,10 @@ let API=window.INFRASIGHT_API||(location.protocol=="file:"?BACKEND:location.orig
 let token=null;try{token=localStorage.getItem(TK)}catch(e){}
 const keep=t=>{token=t;try{t?localStorage.setItem(TK,t):localStorage.removeItem(TK)}catch(e){}};
 const detail=(j,s)=>typeof j.detail=="string"?j.detail:Array.isArray(j.detail)?j.detail.map(d=>d.msg).join(". "):"Request failed ("+s+")";
-async function call(method,path,body){const h={};if(token)h.Authorization="Bearer "+token;let b=body;
+async function call(method,path,body,job){const h={};if(token)h.Authorization="Bearer "+token;if(job)h["X-Progress"]=job;let b=body;
 if(body&&!(body instanceof FormData)){h["Content-Type"]="application/json";b=JSON.stringify(body)}
 let r;try{r=await fetch(API+path,{method,headers:h,body:b})}catch(e){throw{status:0,message:"The InfraSight server cannot be reached. Try again in a moment."}}
-if(path=="/meta"&&r.status==404&&API!=BACKEND&&!window.INFRASIGHT_API){API=BACKEND;ORIGIN=API.replace(/\/api$/,"");return call(method,path,body)}  // page not served by the backend
+if(path=="/meta"&&r.status==404&&API!=BACKEND&&!window.INFRASIGHT_API){API=BACKEND;ORIGIN=API.replace(/\/api$/,"");return call(method,path,body,job)}  // page not served by the backend
 if(r.status==401&&token&&!path.startsWith("/auth/login")){keep(null);location.reload()}
 const j=(r.headers.get("content-type")||"").includes("json")?await r.json():await r.text();
 if(!r.ok)throw{status:r.status,message:detail(j,r.status)};return j}
@@ -27,24 +27,25 @@ me:()=>call("GET","/auth/me"),
 meta:()=>call("GET","/meta"),
 state:async()=>{const j=await call("GET","/state");j.tickets.forEach(fix);return j},
 create:async fd=>{const j=await call("POST","/tickets",fd);fix(j.ticket);return j},
-report:ref=>call("POST",`/tickets/${ref}/report`).then(fix),
-assist:(ref,i)=>call("POST",`/tickets/${ref}/stages/${i}/assist`).then(fix),
+report:(ref,job)=>call("POST",`/tickets/${ref}/report`,null,job).then(fix),
+assist:(ref,i,job)=>call("POST",`/tickets/${ref}/stages/${i}/assist`,null,job).then(fix),
 check:(ref,stage,item,done)=>call("PUT",`/tickets/${ref}/checklist`,{stage,item,done}).then(fix),
 advance:ref=>call("POST",`/tickets/${ref}/advance`).then(fix),
 applySev:ref=>call("POST",`/tickets/${ref}/apply-severity`).then(fix),
 reportPdf:async ref=>{let r;try{r=await fetch(API+`/tickets/${ref}/report.pdf`,{headers:token?{Authorization:"Bearer "+token}:{}})}catch(e){throw{status:0,message:"The InfraSight server cannot be reached."}}if(!r.ok)throw{status:r.status,message:"The report could not be created ("+r.status+")"};return r.blob()},
 saveZones:z=>call("PUT","/zones",z),
 merge:(ref,into)=>call("POST",`/tickets/${ref}/merge`,{into}).then(fix),
-damage:ref=>call("POST",`/tickets/${ref}/damage`).then(fix),
-afterPhoto:(ref,file)=>{const fd=new FormData();fd.append("image",file);return call("POST",`/tickets/${ref}/after-photo`,fd).then(fix)},
-detour:ref=>call("POST",`/tickets/${ref}/detour`).then(fix),
+damage:(ref,job)=>call("POST",`/tickets/${ref}/damage`,null,job).then(fix),
+afterPhoto:(ref,file,job)=>{const fd=new FormData();fd.append("image",file);return call("POST",`/tickets/${ref}/after-photo`,fd,job).then(fix)},
+detour:(ref,job)=>call("POST",`/tickets/${ref}/detour`,null,job).then(fix),
 removeDetour:ref=>call("DELETE",`/tickets/${ref}/detour`).then(fix),
-preview:ref=>call("POST",`/tickets/${ref}/preview`).then(fix),
+preview:(ref,job)=>call("POST",`/tickets/${ref}/preview`,null,job).then(fix),
+progress:job=>call("GET",`/progress/${job}`),
 one:ref=>call("GET",`/tickets/${ref}`).then(fix),
 hotspots:()=>call("GET","/hotspots"),
-forecast:()=>call("POST","/hotspots/forecast"),
+forecast:job=>call("POST","/hotspots/forecast",null,job),
 brief:()=>call("GET","/brief"),
-makeBrief:()=>call("POST","/brief"),
+makeBrief:job=>call("POST","/brief",null,job),
 notes:()=>call("GET","/notifications"),
 readNotes:()=>call("POST","/notifications/read"),
 download:(filename,data,type="application/pdf")=>{const a=document.createElement("a");a.href=URL.createObjectURL(data instanceof Blob?data:new Blob([data],{type}));a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}};
