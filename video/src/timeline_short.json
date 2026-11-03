@@ -1,0 +1,19 @@
+{
+  "fps": 30,
+  "transition": 8,
+  "sting_frames": 90,
+  "film_frames": 5400,
+  "outro_frames": 240,
+  "scenes": [
+    {"name": "Hook", "frames": 140, "skip": 0, "into_next": "fade"},
+    {"name": "LogoReveal", "frames": 95, "skip": 0, "into_next": "fade"},
+    {"name": "ReportPipeline", "frames": 120, "skip": 200, "into_next": "fade", "feature": "One-photo report"},
+    {"name": "TicketSlider", "frames": 105, "skip": 20, "into_next": "fade", "feature": "Repair preview"},
+    {"name": "FullReport", "frames": 110, "skip": 112, "into_next": "fade", "feature": "Sourced report + cost"},
+    {"name": "Detour", "frames": 100, "skip": 30, "into_next": "fade", "feature": "Detour + traffic order"},
+    {"name": "Duplicates", "frames": 75, "skip": 30, "into_next": "fade", "feature": "Duplicates merged"},
+    {"name": "Updates", "frames": 70, "skip": 20, "into_next": "fade", "feature": "Updates in 9 languages"},
+    {"name": "Dashboard", "frames": 70, "skip": 40, "into_next": "fade", "feature": "Dashboard + weekly brief"},
+    {"name": "ModelBadges", "frames": 75, "skip": 0, "into_next": "cut"}
+  ]
+}

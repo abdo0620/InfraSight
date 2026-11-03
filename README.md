@@ -278,6 +278,14 @@ backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created
   day. A real deployment would run its own servers.
 - **Hosting.** No hosted copy: the project runs from this repository. CI starts it on every push
   ([ci.yml](.github/workflows/ci.yml)): smoke tests on the API, `./start.sh` on a fresh checkout, JavaScript syntax.
+- **Demo video.** Made with the code in [video/](video/): a short animated trailer ([Remotion](https://www.remotion.dev/)),
+  then a live demo recorded in one take from the real app calling the real Meta Model API
+  ([live/record_demo.py](video/live/record_demo.py), [live/assemble_demo.py](video/live/assemble_demo.py)). Live AI
+  calls and typing are sped up, and the video says so on screen with the real duration. The take is recorded in slow
+  motion and played back at real speed, for smooth motion from a headless browser.
+- **Music and sound effects.** All original, synthesized from code for this video
+  ([audio/make_music.py](video/audio/make_music.py), [audio/make_sfx.py](video/audio/make_sfx.py),
+  [audio/synth.py](video/audio/synth.py)). No samples, loops or third-party recordings are used.
 
 ## Built during the Meta Global AI Developer Hackathon
 
