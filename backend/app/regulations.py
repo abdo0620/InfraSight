@@ -18,7 +18,7 @@ REG = "\n".join([
     "- Traffic and parking order by the mayor, posted on site. (art. L2213-1 CGCT)",
     "- The acceptance report starts the 1-year completion warranty. (art. 1792-6 Code civil)",
     "- Payment within 30 days; retention of up to 5%. (source not stated [verify])",
-    "- Ownership: only the communal public domain is the commune's responsibility; otherwise inform the Département, "
+    "- Ownership: only the communal public domain is the commune's responsibility; otherwise inform the Department, "
     "the State (DIR), the EPCI, the network operator or the private owner. (source not stated [verify])",
 ])
 
@@ -30,7 +30,7 @@ STAGES = [
      "c": ["Unique ticket number issued", "Routed to the competent department", "Duplicates checked", "Citizen acknowledged"],
      "p": "Deliverables: 1. CLASSIFICATION CHECK: confirm or correct the type and severity, with a one-line reason. 2. MISSING INFORMATION: what staff still need to act (exact location, size, access, immediate danger), or \"none\". 3. DUPLICATES: any open ticket that describes the same problem at the same place, with its ref and the reason, or \"none\". 4. ACKNOWLEDGEMENT: the message to the citizen, max 50 words, plain words, with the ticket reference and no promised dates."},
     {"n": "Technical and financial study", "who": "Technicians, engineers, legal department",
-     "legal": "Verify the land is communal public domain, not State, Département, EPCI or private. Estimate materials and labour.",
+     "legal": "Verify the land is communal public domain, not State, Department, EPCI or private. Estimate materials and labour.",
      "docs": "Inspection report, cost estimate, cadastre extract", "sla": "Inspection within 5 working days (24 h if danger)",
      "c": ["Site inspection done", "Cost estimate recorded", "Ownership verified (cadastre)", "Safety measures taken if danger"],
      "p": "Deliverables: 1. INSPECTION CHECKLIST: 4 to 6 points to check on site. 2. OWNERSHIP CHECK: how to confirm the land is communal public domain (cadastre, road classification) and who to inform if it is not. 3. COST RANGE: minimum and maximum in EUR excl. VAT, with the quantities and unit rates assumed, marked [verify]. 4. SAFETY: interim measures if severity is 4 or 5, otherwise \"none needed\"."},
@@ -66,7 +66,7 @@ DIRECTORY = [
     {"n": "Commune – Roads department", "f": "Municipal roads, pavements, signage", "h": "Ticket, then technician on site", "s": "Inspection within 5 working days"},
     {"n": "Commune – Green spaces department", "f": "Trees, parks, verges, cycle path edges", "h": "Ticket, then field team", "s": "Inspection within 5 working days"},
     {"n": "Commune – Public lighting", "f": "Streetlights and signals", "h": "Ticket, then electrician", "s": "Repair within 10 working days"},
-    {"n": "Département – Road service", "f": "Departmental roads (RD)", "h": "Written notice from the mayor; shared safety measures", "s": "Per departmental agreement"},
+    {"n": "Department – Road service", "f": "Departmental roads (RD)", "h": "Written notice from the mayor; shared safety measures", "s": "Per departmental agreement"},
     {"n": "State – DIR", "f": "National roads", "h": "Notice from the mayor to the DIR", "s": "Per regional protocol"},
     {"n": "Intercommunality – Waste and water", "f": "Collection, sewers, drinking water (if transferred)", "h": "Transfer the ticket to the EPCI service", "s": "Per EPCI charter"},
     {"n": "Network operators", "f": "Gas, electricity, water, telecom networks", "h": "DT-DICT through the national one-stop shop", "s": "Statutory reply times"},
@@ -74,7 +74,7 @@ DIRECTORY = [
     {"n": "Municipal police and emergency services (112)", "f": "Immediate danger, enforcement", "h": "Phone first, then ticket", "s": "Immediate"},
 ]
 
-OWNERS = {"commune": "Commune (municipal domain)", "department": "Département (departmental road)",
+OWNERS = {"commune": "Commune (municipal domain)", "department": "Department (departmental road)",
           "state": "State (national road, DIR)", "epci": "Intercommunality (EPCI)", "private": "Private owner",
           "network": "Network operator"}
 

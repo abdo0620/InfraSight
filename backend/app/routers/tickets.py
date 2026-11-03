@@ -342,7 +342,7 @@ def detour(ref: str, u: User = Depends(staff), _q: User = Depends(ai_quota), s: 
     try:
         order = ai.traffic_order(_brief(t), street.get("name") or t.addr, z.get("radius_m") or 0, d["streets"],
                                  settings.commune_name)
-        p.set("order", "ok", "Draft traffic order written in French")
+        p.set("order", "ok", "Draft traffic order written")
     except HTTPException as e:
         err = e.detail
         p.set("order", "err", e.detail)

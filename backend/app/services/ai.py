@@ -330,32 +330,32 @@ def check_repair(before: bytes | None, after: bytes, ticket: dict, marked: bool 
 
 
 # ---------------------------------------------------------------------------------------------------------------
-# 6. Traffic order (arrêté) for a road closure, in French
+# 6. Traffic order for a road closure
 # ---------------------------------------------------------------------------------------------------------------
 
 def traffic_order(ticket: dict, street: str, length_m: float, detour: list[str], commune: str = "") -> str:
-    """Draft of the mayor's traffic order (arrêté) closing the street section, with the computed detour.
-    What only the town hall knows (order number, dates and hours, signing date) stays "[à compléter]"."""
+    """Draft of the mayor's temporary traffic order closing the street section, with the computed detour.
+    What only the town hall knows (order number, dates and hours, signing date) stays "[to fill]"."""
     system = _system(
         "Role: you are the legal drafting assistant of a French town hall. You draft a temporary traffic order "
-        "(arrêté municipal portant réglementation temporaire de la circulation) for the mayor to review and sign.",
+        "(the mayor's order regulating traffic during works) for the mayor to review and sign.",
         DATA_RULE,
-        "Language: French, formal administrative style.",
+        "Language: English, formal administrative style.",
         "Structure, in this order:\n"
-        "1. Title: ARRÊTÉ MUNICIPAL N° [à compléter] portant réglementation temporaire de la circulation, with the "
-        "street name.\n"
-        "2. Le Maire de <commune>, using the commune given in the data, or [commune à compléter] if none,\n"
-        "3. Visas, one per line starting with \"Vu\": Code général des collectivités territoriales, notamment les "
-        "articles L2213-1 et L2213-2; Code de la route; instruction interministérielle sur la signalisation routière.\n"
-        "4. Considérant: the works and the danger, from the ticket only.\n"
-        "5. ARRÊTE, then numbered articles: Article 1 section closed and its length; Article 2 dates and hours; "
+        "1. Title: MUNICIPAL ORDER No. [to fill] on temporary traffic regulation, with the street name.\n"
+        "2. The Mayor of <commune>, using the commune given in the data, or [commune to fill] if none,\n"
+        "3. Legal basis, one per line starting with \"Having regard to\": the General Code of Local Authorities "
+        "(CGCT), in particular articles L2213-1 and L2213-2; the Highway Code (Code de la route); the interministerial "
+        "instruction on road signage.\n"
+        "4. Whereas: the works and the danger, from the ticket only.\n"
+        "5. ORDERS, then numbered articles: Article 1 section closed and its length; Article 2 dates and hours; "
         "Article 3 detour route, streets in the given order; Article 4 signage, at the charge of the contractor or the "
         "commune; Article 5 exemptions for emergency, security and residents' vehicles; Article 6 posting and "
         "publication; Article 7 execution (who is charged with enforcing the order).\n"
-        "6. Fait à <commune> (or [à compléter]), le [à compléter], signature line for the Maire.",
-        "Rules: cite only the legal texts listed in the visas. Write \"[à compléter]\" for every value not given "
-        "(dates, hours, names, numbers) and \"[à vérifier]\" after any point the mayor's office must check. If the "
-        "detour is \"not computed\", write Article 3 with \"[itinéraire à compléter]\".",
+        "6. Done at <commune> (or [to fill]), on [to fill], signature line for the Mayor.",
+        "Rules: cite only the legal texts listed in the legal basis. Keep street and place names as they are. Write "
+        "\"[to fill]\" for every value not given (dates, hours, names, numbers) and \"[to check]\" after any point the "
+        "mayor's office must check. If the detour is \"not computed\", write Article 3 with \"[route to fill]\".",
         TEXT_RULES)
     user = _data(ticket=ticket, commune=commune or "not given", section_closed=f"{street}, about {round(length_m)} m",
                  detour_streets_in_order=", ".join(detour) or "not computed")

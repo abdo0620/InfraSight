@@ -142,9 +142,8 @@ calls an endpoint on the backend, and the endpoint calls one of the functions be
 - **Before the AI:** the detour is computed **without AI** by [routing.py](backend/app/services/routing.py), from the
   OpenStreetMap road network.
 - **Sends:** the ticket summary, the street name, the closed length, and the detour streets in order.
-- **Gets back:** a draft *arrêté municipal* (traffic order), **in French**, in the standard structure (title, *Vu*,
-  *Considérant*, 7 articles, signature). Missing values are marked `[à compléter]` and points to check
-  `[à vérifier]`.
+- **Gets back:** a draft temporary traffic order, in English, in the standard structure (title, legal basis,
+  *Whereas*, 7 articles, signature). Missing values are marked `[to fill]` and points to check `[to check]`.
 - **Effect:**
   - The detour is drawn in blue on the maps.
   - The order is saved on the ticket for the mayor to check and sign.
@@ -281,9 +280,7 @@ Pillow. Where the area comes from:
 
   The interface prefers the report's version when there is one. Check whether they can disagree without anyone
   noticing.
-- **Mixed languages:**
-  - `traffic_order` is in French;
-  - `weekly_brief` is in English;
+- **Languages:**
   - `citizen_update` is in the citizen's language;
   - everything else is in English.
 - **Legal content:** `full_report`, `stage_assist` and `traffic_order` depend on `REG` in

@@ -457,8 +457,8 @@ def report_pdf(t: dict, paths: dict) -> bytes:
     # ---- annex: traffic order
     if detour.get("order"):
         story.append(H1("Annex: draft traffic order"))
-        story.append(note("Drafted in French by Muse Spark for the mayor to check, complete and sign. "
-                          "[à compléter] = value to fill; [à vérifier] = point to check."))
+        story.append(note("Drafted by Muse Spark for the mayor to check, complete and sign. "
+                          "[to fill] = value to fill; [to check] = point to check."))
         story.append(Spacer(1, 6))
         story += [P(e(line) or "&nbsp;", "cell") for line in detour["order"].splitlines()]
 
