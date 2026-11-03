@@ -30,7 +30,7 @@
 <tr>
 <td width="44%" valign="top">
 <img src="docs/images/live-pipeline.gif" alt="Live AI analysis of a citizen report: Muse Spark reads the photo, SAM 3.1 outlines the damage, Muse Image draws the street repaired">
-<p align="center"><sub>A real citizen report, recorded on the demo data: Muse Spark triages it, SAM 3.1 outlines the damage, Muse Image draws the street repaired. Sped up about 2.5×; the real run took 115 s.</sub></p>
+<p align="center"><sub>A real citizen report of a smashed bus shelter: Muse Spark triages it, SAM 3.1 outlines the damage, Muse Image draws the shelter repaired. Sped up about 2.5×; the real run took 85 s.</sub></p>
 </td>
 <td valign="top">
 
@@ -100,7 +100,7 @@ The backend serves the console too: opening `frontend/index.html` as a file does
 3. **AI report** tab, **Generate full report**: watch each step live, then read the cost estimate, with a source link
    on every priced line.
 4. Open **IS-0044** (Sunken manhole cover), **Danger and zone** tab, **Plan a detour**: the route around the
-   closed section and the mayor's traffic order, drafted in French.
+   closed section and the mayor's draft traffic order.
 5. **Download PDF report** on any ticket; then the **Dashboard**, and **Write this week's brief**.
 
 ## A tour
@@ -112,15 +112,16 @@ detours in blue, streets with repeated problems in purple. **Clear** hides every
 <img src="docs/images/map.jpg" alt="Staff map of Brest with incidents, danger zones and a detour">
 
 ### The ticket: photo, damage, and the street repaired
-The citizen's photo, the damage outlined in red by **SAM 3.1**, and the street repaired by **Muse Image**. The
+The bus shelter from the report above: the citizen's photo, the damage outlined in red by **SAM 3.1**, and the
+shelter repaired by **Muse Image**. The
 preview keeps the real photo everywhere except the damaged area, so cars, signs and light never change. It is
 labelled as an illustration everywhere.
 
-<img src="docs/images/ticket-slider.jpg" alt="Ticket IS-0042 with the before / after slider, the damage zone and the repair preview">
+<img src="docs/images/ticket-slider.jpg" alt="Ticket IS-0050, a smashed bus shelter, with the before / after slider, the damage zone and the repair preview">
 
 ### A cost estimate you can check
 Muse Spark only chooses the work items and the quantities; **the server prices them** from a catalogue of unit
-rates taken from public French price schedules (BPU), and every line links its source. Work the catalogue does not
+rates taken from public price schedules (for now French BPU), and every priced line links its source. Work the catalogue does not
 cover is marked `[verify]` and a commune replaces the rates with those of its own contract
 ([backend/app/prices.py](backend/app/prices.py)).
 
@@ -128,10 +129,10 @@ cover is marked `[verify]` and a commune replaces the rates with those of its ow
 
 ### Detour and traffic order
 For a danger zone that closes a street, InfraSight downloads the road network around it, computes the shortest
-legal detour (one-way streets respected), and Muse Spark drafts the mayor's traffic order (arrêté) in French. What
-only the town hall can decide (order number, dates, signature) stays `[à compléter]`: the AI does not invent it.
+legal detour (one-way streets respected), and Muse Spark drafts the mayor's temporary traffic order. What only the
+town hall can decide (order number, dates, signature) stays `[to fill]`: the AI does not invent it.
 
-<img src="docs/images/detour.jpg" alt="Danger tab of IS-0044 with the detour on the map and the draft traffic order in French">
+<img src="docs/images/detour.jpg" alt="Danger tab of IS-0044 with the detour on the map and the draft traffic order">
 
 ### Dashboard and weekly brief
 Priority matrix, deadline and safety alerts, committed budget, and a weekly brief for elected officials written by
@@ -269,13 +270,10 @@ backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created
 - **PDF incident report** (not a fully tagged PDF/UA).
 </details>
 
-## Honest notes
+## Notes
 
-- **Demo data.** The 4 demo photos are not real citizen photos: they were generated with Muse Image, then run once
-  through the real pipeline (SAM 3.1 outline, Muse Image preview), so the demo shows every feature without AI calls at
-  start. The screenshots above were taken on that demo data, with real Muse Spark, SAM 3.1 and Muse Image calls.
-- **Unit rates** come from 2021-2024 public price schedules of a few French public bodies: indicative, to be replaced
-  by a commune's own contract rates. **Regulatory notes** need a legal review before real use.
+- **Unit rates.** For now, the catalogue uses public French price schedules (BPU); a commune plugs in the rates of
+  its own works contract. **Regulatory notes** follow French law and need a legal review before real use.
 - **Public map services** (Nominatim, Overpass) are free and rate-limited; detours can take up to a minute on a busy
   day. A real deployment would run its own servers.
 - **Hosting.** No hosted copy: the project runs from this repository. CI starts it on every push
