@@ -152,7 +152,7 @@ return `${compareHTML(t)}<div class="vg">${f(t.img,"Photo","As reported")}${t.zo
 // them every 0.4 s while the action runs. Same look as the citizen's pipeline (css: .pipe).
 const AI_TASKS={
 report:["Full AI report",[["ctx","InfraSight","Gathering the ticket, photos and regulatory notes"],["spark","Muse Spark","Writing the full report"],["osm","OpenStreetMap","Fitting the danger zone to the street"]]],
-detour:["Detour and traffic order",[["roads","OpenStreetMap","Downloading the road network around the section"],["route","InfraSight","Computing the shortest legal detour"],["order","Muse Spark","Drafting the traffic order in French"]]],
+detour:["Detour and traffic order",[["roads","OpenStreetMap","Downloading the road network around the section"],["route","InfraSight","Computing the shortest legal detour"],["order","Muse Spark","Drafting the mayor's traffic order"]]],
 assist:["AI draft for this stage",[["ctx","InfraSight","Gathering the ticket, earlier stages and rules"],["spark","Muse Spark","Drafting the stage documents"]]],
 damage:["Damage analysis",[["sam","SAM 3.1","Outlining the damage on the photo"],["size","Muse Spark","Measuring it from objects of known size"],["zone","InfraSight","Drawing the red damage zone"],["image","Muse Image","Drawing the street repaired"]]],
 preview:["Repair preview",[["image","Muse Image","Drawing the street repaired"]]],
