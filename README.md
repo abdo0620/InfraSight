@@ -24,6 +24,11 @@
   <a href="AI-FUNCTIONS.md">Every AI call</a>
 </p>
 
+<p align="center">
+  <a href="docs/video/infrasight-trailer.mp4"><img src="docs/images/trailer-poster.jpg" width="720" alt="Watch the InfraSight trailer, 1 min 35 s, with music"></a><br>
+  <sub>The trailer (1:35), with an original street beat composed in code for it. Click to watch.</sub>
+</p>
+
 ---
 
 <table>
@@ -283,7 +288,8 @@ backend/                   FastAPI + SQLAlchemy + SQLite (infrasight.db, created
   ([live/record_demo.py](video/live/record_demo.py), [live/assemble_demo.py](video/live/assemble_demo.py)). Live AI
   calls and typing are sped up, and the video says so on screen with the real duration. The take is recorded in slow
   motion and played back at real speed, for smooth motion from a headless browser.
-- **Music and sound effects.** All original, synthesized from code for this video
+- **Music and sound effects.** All original, synthesized from code for this video and for the
+  [trailer](docs/video/infrasight-trailer.mp4) (a laid-back street beat: 808 bass, swung hats, electric piano)
   ([audio/make_music.py](video/audio/make_music.py), [audio/make_sfx.py](video/audio/make_sfx.py),
   [audio/synth.py](video/audio/synth.py)). No samples, loops or third-party recordings are used.
 

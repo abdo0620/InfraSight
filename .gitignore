@@ -21,3 +21,4 @@ backend/uploads/*
 
 # demo video (large binary, share it outside Git)
 *.mp4
+!docs/video/infrasight-trailer.mp4
