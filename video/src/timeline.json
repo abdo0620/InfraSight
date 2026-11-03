@@ -1,0 +1,21 @@
+{
+  "fps": 30,
+  "transition": 12,
+  "scenes": [
+    {"name": "Hook", "frames": 180, "into_next": "fade"},
+    {"name": "LogoReveal", "frames": 120, "into_next": "fade"},
+    {"name": "ReportPipeline", "frames": 360, "into_next": "slide"},
+    {"name": "MapScene", "frames": 180, "into_next": "slide"},
+    {"name": "TicketSlider", "frames": 240, "into_next": "slide"},
+    {"name": "FullReport", "frames": 300, "into_next": "slide"},
+    {"name": "Detour", "frames": 240, "into_next": "slide"},
+    {"name": "Duplicates", "frames": 150, "into_next": "slide"},
+    {"name": "Stages", "frames": 180, "into_next": "slide"},
+    {"name": "RepairCheck", "frames": 150, "into_next": "slide"},
+    {"name": "Updates", "frames": 150, "into_next": "slide"},
+    {"name": "Dashboard", "frames": 180, "into_next": "slide"},
+    {"name": "PdfReport", "frames": 120, "into_next": "fade"},
+    {"name": "PoweredByMeta", "frames": 300, "into_next": "fade"},
+    {"name": "Outro", "frames": 180, "into_next": "cut"}
+  ]
+}

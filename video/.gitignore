@@ -1,0 +1,8 @@
+node_modules/
+out/
+# reference music: only for analysis, never in the trailer, not ours to publish
+public/reference.wav
+public/img/reference/
+# generated music tracks (about 18 MB each): rebuild with "npm run sound"
+public/music/
+public/live/
