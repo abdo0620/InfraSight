@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/Meta%20Model%20API-Muse%20Spark%20%C2%B7%20SAM%203.1%20%C2%B7%20Muse%20Image-0467DF" alt="Meta models: Muse Spark, SAM 3.1, Muse Image">
   <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB" alt="Python 3.10 or later">
   <img src="https://img.shields.io/badge/FastAPI-backend-009688" alt="FastAPI backend">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT License"></a>
 </p>
 
 <p align="center">
