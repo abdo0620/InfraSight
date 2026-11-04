@@ -8,9 +8,9 @@ before relying on them. All models below are reached with the same `META_API_KEY
 
 | Model ID | What it does | Price | Used in InfraSight |
 |---|---|---|---|
-| `muse-spark-1.3` | Latest Muse Spark. Reads text, images, video, audio and PDF; writes text. 1M-token context. Tuned for agents and tool use. | $1.25 in · $0.15 cached · $4.25 out, per 1M tokens | Not yet. Same price as 1.1, so worth switching (see below) |
+| `muse-spark-1.3` | Latest Muse Spark. Reads text, images, video, audio and PDF; writes text. 1M-token context. Tuned for agents and tool use. | $1.25 in · $0.15 cached · $4.25 out, per 1M tokens | **Yes**: all 9 text functions (triage, reports, stages, size, repair check, traffic order, forecast, brief, citizen messages), set in `backend/.env` |
 | `muse-spark-1.2` | Same as 1.3, slightly older. Better than 1.3 for **audio** input. | Same as 1.3 | No |
-| `muse-spark-1.1` | First Muse Spark. Text, images, video, audio, PDF → text. | Same as 1.3 | **Yes**: all 9 text functions (triage, reports, stages, size, repair check, traffic order, forecast, brief, citizen messages) |
+| `muse-spark-1.1` | First Muse Spark. Text, images, video, audio, PDF → text. | Same as 1.3 | Only as the fallback when `MODEL_QUICK` / `MODEL_DEFAULT` are not set |
 | `muse-spark-1.3-contributor` / `muse-spark-1.2-contributor` | The same models, **12× cheaper**, but **Meta may use what you send to train its models**. Lower rate limit (150 requests/min). | $0.10 in · $0.002 cached · $0.20 out, per 1M tokens | No. Don't use it with real citizens' photos and reports. Fine for tests with fake data. |
 | `muse-wonder-1.0` | Meta's strongest model (preview). Long, complex tasks: software engineering, multi-step agents. Same inputs as Muse Spark. | $4.00 in · $0.20 cached · $20.00 out, per 1M tokens | No. About 4× the cost of Spark, not needed here |
 | `muse-image-1.0` | Creates and **edits** images from text and images. | **$0.01 per image** (billed only when an image is returned) | **Yes**: the "after repair" preview |
@@ -51,7 +51,7 @@ $0.01. **For the hackathon demo, $150 is far more than enough.**
 
 ## Tips
 
-- **Switch to Muse Spark 1.3.** It's the latest and costs the same. In `backend/.env`:
+- **Muse Spark 1.3 is the one in use.** It's the latest and costs the same as 1.1. In `backend/.env`:
   `MODEL_QUICK=muse-spark-1.3` and `MODEL_DEFAULT=muse-spark-1.3`.
 - **Set a spending limit** on the Billing page at dev.meta.ai, so you never go over the $150.
 - **Rate limits** are per team: 3,000 requests/min for Muse Spark, Muse Wonder and SAM 3.1; 150/min for Muse Image
