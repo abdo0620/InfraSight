@@ -28,7 +28,7 @@ SLOW = ev.get("slow", 1.0)
 caps = sorted(ev["captions"])
 # shorter captions for the final film (same meaning), keyed by how the recorded caption starts
 SHORT = {
-    "Live demo, recorded": "Live demo, recorded in one take: the real InfraSight app, calling Meta's models through the Meta Model API.",
+    "Live demo, recorded": "Live demo, recorded in one take (one part cut for time): the real InfraSight app, calling Meta's models through the Meta Model API.",
     "Everything shown was built": "Everything shown was built this hackathon week. Long AI calls are sped up, and the top-right corner says so.",
     "A citizen signs in": "A citizen signs in. Every report is pinned on the map: type an address, pick an OpenStreetMap suggestion.",
     "They add one photo": "Then one photo and one sentence in their own words. No form, no category to choose.",
@@ -55,9 +55,27 @@ if not ev.get("merged", True):                                  # the merge subt
     caps = [[t, "A second citizen reports the same bus shelter. Muse Spark compares it with the open cases nearby; "
                 "here it kept it as a separate case, which staff can still merge by hand."
              if c.startswith("A second citizen") else c] for t, c in caps]
+# parts of the take left out of the film, for time: from the end of the last result before the caption to the end of
+# the last result before the next caption (a hard cut)
+CUT_CAPTIONS = ["Hotspots are streets"]
+edits = []
+for prefix in CUT_CAPTIONS:
+    i = next((k for k, (t, c) in enumerate(caps) if c.startswith(prefix)), None)
+    if i is None or i + 1 >= len(caps):
+        continue
+    ends = [h1 for h0, h1 in ev["hold"]]
+    a = max([e for e in ends if e <= caps[i][0]], default=None)
+    b = max([e for e in ends if e <= caps[i + 1][0]], default=None)
+    nxt = [c[0] for c in ev.get("clicks", []) if b and c[0] > b]
+    if nxt:                                                     # the click that leaves the removed page goes too
+        b = nxt[0] + 0.5 * SLOW
+    if a and b and b > a:
+        edits.append((a, b))
+        caps.pop(i)
+inside = lambda t: any(a <= t < b for a, b in edits)
 cursor = ev.get("cursor", [])
 cur_t = [c[0] for c in cursor]
-clicks = ev.get("clicks", [])
+clicks = [c for c in ev.get("clicks", []) if not inside(c[0])]
 
 
 def read_time(text):
@@ -69,7 +87,8 @@ def read_time(text):
 spans = []
 for a, b, kind, label, *pace in ev["speed"]:
     # the last fields: the real duration of the whole span, and the slow-motion factor it was recorded at
-    spans.append([a, b, kind, label, b - a, pace[0] if pace else SLOW])
+    if not any(e0 < b and a < e1 for e0, e1 in edits):
+        spans.append([a, b, kind, label, b - a, pace[0] if pace else SLOW])
 # an AI speed-up starts only once the caption shown just before it has been read (at real speed)
 for s in spans:
     if s[2] != "ai":
@@ -78,7 +97,7 @@ for s in spans:
         if t <= s[0] and s[0] < t + read_time(c) * SLOW:
             s[0] = min(t + read_time(c) * SLOW, s[1])
 spans = [s for s in spans if s[1] - s[0] > 1.0]                 # a call already over by then plays at real speed
-holds = [tuple(h) for h in ev["hold"]]
+holds = [tuple(h) for h in ev["hold"] if not any(e0 < h[1] and h[0] < e1 for e0, e1 in edits)]
 
 
 def moving(a, b):
@@ -95,7 +114,8 @@ def moving(a, b):
 # The pointer's own movements are never sped up.
 still, idle = [], []
 marks = sorted(set(stamps + cur_t + [t0, t1]))
-free = lambda a, b: not any(s[0] < b and a < s[1] for s in spans) and not any(h0 < b and a < h1 for h0, h1 in holds)
+free = lambda a, b: (not any(s[0] < b and a < s[1] for s in spans) and not any(h0 < b and a < h1 for h0, h1 in holds)
+                     and not any(e0 < b and a < e1 for e0, e1 in edits))
 for a, b in zip(marks, marks[1:]):
     if b - a > 0.6 * SLOW and free(a, b):
         still.append([a + 0.25 * SLOW, b - 0.02])
@@ -105,7 +125,8 @@ for a, b in zip(moves, moves[1:]):
     if b2 - a2 > 0.9 * SLOW:
         # split around holds and spans, keep the free parts
         cuts = sorted([(max(a2, s[0]), min(b2, s[1])) for s in spans if s[0] < b2 and a2 < s[1]] +
-                      [(max(a2, h0), min(b2, h1)) for h0, h1 in holds if h0 < b2 and a2 < h1])
+                      [(max(a2, h0), min(b2, h1)) for h0, h1 in holds if h0 < b2 and a2 < h1] +
+                      [(max(a2, e0), min(b2, e1)) for e0, e1 in edits if e0 < b2 and a2 < e1])
         cur = a2
         for c0, c1 in cuts + [(b2, b2)]:
             if c0 - cur > 0.9 * SLOW:
@@ -131,6 +152,8 @@ def timeline(k):
             segs.append([a, b, real / out, f"{natural / out:.0f}x  ·  sped up", kind, pace])
     for a, b in still:
         segs.append([a, b, (b - a) / 0.05, None, "still", SLOW])
+    for a, b in edits:                                          # cut out of the film: no time at all
+        segs.append([a, b, 1e12, None, "edit", SLOW])
     f_idle = min(5.0, IDLE / max(k, 0.6))
     for a, b in idle:                                           # (overlaps with still stretches: the first one wins)
         segs.append([a, b, f_idle * SLOW, f"{f_idle:.0f}x  ·  sped up", "idle", SLOW])

@@ -1,5 +1,5 @@
-// The final film for the judges: short trailer, logo transition and live demo recording (film_frames, 3:03.5),
-// then a short outro; 3:10 in all.
+// The final film for the judges: short trailer, logo transition and live demo recording (film_frames), then a short
+// outro: 3:00 in all.
 // Music: the inspired track under the trailer, climaxing on the cut and fading out during the transition; then the same
 // sound, calmer and quieter, fading back in under the live demo; then a short closing phrase under the outro.
 import React from 'react';

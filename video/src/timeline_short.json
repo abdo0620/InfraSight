@@ -2,7 +2,7 @@
   "fps": 30,
   "transition": 8,
   "sting_frames": 150,
-  "film_frames": 5505,
+  "film_frames": 5205,
   "outro_frames": 195,
   "scenes": [
     {"name": "Hook", "frames": 185, "skip": 0, "into_next": "fade"},
