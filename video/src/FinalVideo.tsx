@@ -1,5 +1,5 @@
-// The final film for the judges: exactly 3:00 (film_frames) of short trailer, logo transition and live demo recording,
-// then a short outro after the 3:00 mark.
+// The final film for the judges: short trailer, logo transition and live demo recording (film_frames, 3:03.5),
+// then a short outro; 3:10 in all.
 // Music: the inspired track under the trailer, climaxing on the cut and fading out during the transition; then the same
 // sound, calmer and quieter, fading back in under the live demo; then a short closing phrase under the outro.
 import React from 'react';
@@ -11,7 +11,7 @@ import {Outro} from './scenes/Outro';
 
 const STING = timeline.sting_frames;
 export const DEMO_FROM = SHORT_TOTAL + STING;
-export const FILM_FRAMES = timeline.film_frames;                 // 3:00 exactly
+export const FILM_FRAMES = timeline.film_frames;                 // everything before the outro
 export const DEMO_FRAMES = FILM_FRAMES - DEMO_FROM;               // the live demo is assembled to this length
 export const OUTRO_FRAMES = timeline.outro_frames;
 export const FINAL_TOTAL = FILM_FRAMES + OUTRO_FRAMES;

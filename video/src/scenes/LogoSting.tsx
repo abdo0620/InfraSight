@@ -1,10 +1,10 @@
-// A short logo transition (3 s) between the trailer and the live demo recording: the radar draws and sweeps,
+// A short logo transition (5 s) between the trailer and the live demo recording: the radar draws and sweeps,
 // the name lands, "Live demo" appears, then everything pushes in and fades to black.
 import React from 'react';
 import {Audio, interpolate, Sequence, spring, staticFile, useCurrentFrame, useVideoConfig} from 'remotion';
 import {C, Radar, SERIF, Stage} from '../lib';
 
-export const STING_FRAMES = 90;
+export const STING_FRAMES = 150;
 
 /** quiet: the softer effect levels used in the final film */
 export const LogoSting: React.FC<{quiet?: boolean}> = ({quiet}) => {
@@ -16,8 +16,8 @@ export const LogoSting: React.FC<{quiet?: boolean}> = ({quiet}) => {
 	const word = spring({frame: frame - 16, fps, config: {damping: 18}});
 	const live = spring({frame: frame - 30, fps, config: {damping: 16}});
 	// the end: push in towards the radar and fade to black, so the recording can start from black
-	const push = interpolate(frame, [62, STING_FRAMES], [1, 1.35], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
-	const out = interpolate(frame, [68, STING_FRAMES - 4], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+	const push = interpolate(frame, [STING_FRAMES - 40, STING_FRAMES], [1, 1.35], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
+	const out = interpolate(frame, [STING_FRAMES - 32, STING_FRAMES - 4], [1, 0], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
 	const fadeIn = interpolate(frame, [0, 8], [0, 1], {extrapolateRight: 'clamp'});
 	return (
 		<Stage>
@@ -42,7 +42,7 @@ export const LogoSting: React.FC<{quiet?: boolean}> = ({quiet}) => {
 			<Sequence from={14} layout="none">
 				<Audio src={staticFile('sfx/impact.wav')} volume={0.6 * v} />
 			</Sequence>
-			<Sequence from={60} layout="none">
+			<Sequence from={STING_FRAMES - 30} layout="none">
 				<Audio src={staticFile('sfx/whoosh.wav')} volume={0.9 * v} />
 			</Sequence>
 		</Stage>

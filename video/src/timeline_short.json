@@ -1,11 +1,11 @@
 {
   "fps": 30,
   "transition": 8,
-  "sting_frames": 90,
-  "film_frames": 5400,
-  "outro_frames": 240,
+  "sting_frames": 150,
+  "film_frames": 5505,
+  "outro_frames": 195,
   "scenes": [
-    {"name": "Hook", "frames": 140, "skip": 0, "into_next": "fade"},
+    {"name": "Hook", "frames": 185, "skip": 0, "into_next": "fade"},
     {"name": "LogoReveal", "frames": 95, "skip": 0, "into_next": "fade"},
     {"name": "ReportPipeline", "frames": 120, "skip": 200, "into_next": "fade", "feature": "One-photo report"},
     {"name": "TicketSlider", "frames": 105, "skip": 20, "into_next": "fade", "feature": "Repair preview"},
