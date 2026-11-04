@@ -24,10 +24,9 @@
   <a href="AI-FUNCTIONS.md">Every AI call</a>
 </p>
 
-<p align="center">
-  <a href="docs/video/infrasight-trailer.mp4"><img src="docs/images/trailer-poster.jpg" width="720" alt="Watch the InfraSight trailer, 1 min 35 s, with music"></a><br>
-  <sub>The trailer (1:35), with an original street beat composed in code for it. Click to watch.</sub>
-</p>
+https://github.com/user-attachments/assets/d2dd6138-a23a-465a-a4e3-e84975360660
+
+<p align="center"><sub>The trailer (1:35), with an original street beat composed in code for it.</sub></p>
 
 ---
 
