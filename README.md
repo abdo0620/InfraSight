@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <b>Demo video (3 min):</b> <i>[link to add before submission]</i> ·
+  <b><a href="https://youtu.be/JLSLhUVK76s">Watch the demo video (3 min, YouTube)</a></b> ·
   <a href="#for-judges-run-it-in-5-minutes">Run it in 5 minutes</a> ·
   <a href="#what-to-try-in-3-minutes">What to try</a> ·
   <a href="AI-FUNCTIONS.md">Every AI call</a>
